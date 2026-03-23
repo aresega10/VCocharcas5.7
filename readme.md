@@ -1,4 +1,4 @@
-Vcocharcas POS v4.4 🛒
+Vcocharcas POS v5.7 🛒
 
 Sistema de Punto de Venta (POS) ligero, diseñado específicamente para la gestión de inventario, ventas y fiados en dispositivos móviles.
 
@@ -34,6 +34,6 @@ JavaScript Vanilla (ES6+)
 
 FontAwesome para iconografía.
 
-LocalStorage para persistencia de datos local.
+Cloud para persistencia de datos local.
 
 Desarrollado para la gestión eficiente de negocios locales.
