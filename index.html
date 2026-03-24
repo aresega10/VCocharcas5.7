@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vcocharcas Cloud POS v5.8</title>
+    <title>Vcocharcas Cloud POS v5.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -141,7 +141,7 @@
 
         window.delP = async (n) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
 
-        // --- VENTAS CORREGIDAS (PERSISTENCIA Y FOCO) ---
+        // --- VENTAS (CON CORRECCIÓN DE FOCO) ---
         window.renderVenta = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="bg-white p-4 rounded-2xl shadow mb-4">
@@ -165,7 +165,6 @@
                 </div>
                 <div id="cart-area" class="bg-blue-900 text-white p-5 rounded-3xl shadow-2xl"></div>`;
             rCart();
-            // Mantener foco y valor en el buscador
             document.getElementById('bus-prod').value = busquedaVenta;
             document.getElementById('bus-prod').focus();
         };
@@ -261,6 +260,7 @@
 
         window.cobrar = async (id) => { if(confirm("¿Confirmar pago?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
 
+        // --- ADMINISTRACIÓN (CON LIMPIAR TODO RESTAURADO) ---
         window.renderAdmin = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="space-y-4">
@@ -273,47 +273,4 @@
                         <input type="file" id="fCsv" class="text-xs mb-3 block w-full">
                         <button onclick="subirCSV()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Subir a la Nube</button>
                     </div>
-                </div>`;
-        };
-
-        // --- IMPORTACIÓN CSV CON DETECCIÓN BINARIA ---
-        window.subirCSV = () => {
-            const input = document.getElementById('fCsv'); if(!input.files[0]) return alert("Selecciona archivo");
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const bytes = new Uint8Array(e.target.result);
-                // Intento UTF-8, si falla (caracter roto ), usa Windows-1252 (Excel Español)
-                let contenido = new TextDecoder('utf-8').decode(bytes);
-                if (contenido.includes('')) {
-                    contenido = new TextDecoder('windows-1252').decode(bytes);
-                }
-                const lines = contenido.split('\n');
-                alert("Sincronizando productos con eñes y acentos...");
-                for(let i=1; i<lines.length; i++) {
-                    const d = lines[i].split(',');
-                    if(d.length >= 3) {
-                        const n = d[0].trim();
-                        await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseInt(d[3])||0, cat: (d[4]||"General").trim() });
-                    }
-                }
-                alert("Nube Actualizada"); await sync(); renderInventario();
-            };
-            reader.readAsArrayBuffer(input.files[0]);
-        };
-
-        window.exp = (t) => {
-            let contenido = (t === 'v') ? "Fecha,Cliente,Monto,Utilidad\n" : "Nombre,Costo,Precio,Stock,Categoria\n";
-            if (t === 'v') db.transacciones.forEach(x => contenido += `${x.fecha},${x.cli},${x.monto},${x.utilidad}\n`);
-            else db.productos.forEach(x => contenido += `${x.nombre},${x.costo},${x.precio},${x.stock},${x.cat}\n`);
-            // \ufeff permite que Excel reconozca caracteres especiales al abrir
-            const blob = new Blob(["\ufeff" + contenido], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = (t === 'v' ? "ventas_vcocharcas.csv" : "stock_vcocharcas.csv");
-            link.click();
-        };
-
-        await sync(); window.renderDashboard();
-    </script>
-</body>
-</html>
+                    <div class="bg-red-50 p-
