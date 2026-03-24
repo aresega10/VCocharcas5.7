@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vcocharcas Cloud POS v6.0</title>
+    <title>Vcocharcas Cloud POS v6.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -75,7 +75,7 @@
                 db.deudas = dSnap.docs.map(d => ({...d.data(), id: d.id}));
                 const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
                 document.getElementById('nav-balance').innerText = 'S/ ' + ingresos.toFixed(2);
-            } catch (e) { console.error("Error de sincronización", e); }
+            } catch (e) { console.error(e); }
         };
 
         window.renderDashboard = () => {
@@ -98,13 +98,13 @@
             document.getElementById('app-content').innerHTML = `
                 <div class="bg-white p-5 rounded-2xl shadow mb-4">
                     <h3 id="inv-title" class="font-bold text-xs text-blue-900 uppercase mb-3 border-b pb-1">Gestión de Stock</h3>
-                    <input type="text" id="p-n" placeholder="Nombre del Producto" class="w-full p-2 border mb-2 rounded-xl text-sm font-bold">
+                    <input type="text" id="p-n" placeholder="Producto" class="w-full p-2 border mb-2 rounded-xl text-sm font-bold">
                     <div class="grid grid-cols-2 gap-2 mb-2">
                         <input type="number" id="p-c" placeholder="Costo S/" class="p-2 border rounded-xl text-xs">
                         <input type="number" id="p-v" placeholder="Venta S/" class="p-2 border rounded-xl text-xs font-bold text-blue-600">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="p-s" placeholder="Stock Inicial" class="p-2 border rounded-xl text-xs">
+                        <input type="number" id="p-s" placeholder="Stock" class="p-2 border rounded-xl text-xs">
                         <select id="p-cat" class="p-2 border rounded-xl text-xs bg-gray-50">${db.categorias.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                     </div>
                     <div class="flex gap-2 mt-4">
@@ -113,7 +113,8 @@
                     </div>
                 </div>
                 <div class="space-y-2">
-                    ${db.productos.map(p => `<div class="bg-white p-3 rounded-xl flex justify-between items-center shadow-sm border-l-4 border-blue-900" onclick="editP('${p.nombre}')">
+                    ${db.productos.slice().sort((a,b) => a.nombre.localeCompare(b.nombre)).map(p => `
+                    <div class="bg-white p-3 rounded-xl flex justify-between items-center shadow-sm border-l-4 border-blue-900" onclick="editP('${p.nombre}')">
                         <div class="flex-1"><b class="text-sm uppercase">${p.nombre}</b><br><small class="text-gray-400">Stock: ${p.stock} | ${p.cat}</small></div>
                         <div class="text-right flex items-center gap-3"><b class="text-blue-900 italic">S/ ${p.precio.toFixed(2)}</b><button onclick="event.stopPropagation(); delP('${p.nombre}')" class="text-red-300 text-xs"><i class="fas fa-trash"></i></button></div>
                     </div>`).join('')}
@@ -177,7 +178,10 @@
         };
 
         const renderListaProds = () => {
-            return db.productos.filter(p => (filtroCat==='Todos'||p.cat===filtroCat) && p.nombre.toLowerCase().includes(busquedaVenta.toLowerCase())).map(p => `
+            return db.productos
+                .filter(p => (filtroCat==='Todos'||p.cat===filtroCat) && p.nombre.toLowerCase().includes(busquedaVenta.toLowerCase()))
+                .sort((a,b) => a.nombre.localeCompare(b.nombre))
+                .map(p => `
                 <button onclick="addCart('${p.nombre}')" class="p-2 bg-white border rounded-xl text-left shadow-sm active:bg-blue-100">
                     <b class="text-[9px] uppercase block truncate text-gray-500">${p.nombre}</b>
                     <div class="flex justify-between items-center"><span class="text-blue-900 font-black italic text-xs">S/ ${p.precio.toFixed(2)}</span><span class="text-[8px] opacity-40">St: ${p.stock}</span></div>
@@ -207,7 +211,7 @@
         const rCart = () => {
             const tot = carrito.reduce((a, b) => a + (b.p * b.c), 0);
             const div = document.getElementById('cart-area'); if(!div) return;
-            if(carrito.length===0) { div.innerHTML = `<p class="text-center opacity-30 italic text-xs">Carrito vacío...</p>`; return; }
+            if(carrito.length===0) { div.innerHTML = `<p class="text-center opacity-30 italic text-xs">Vacío...</p>`; return; }
             div.innerHTML = `
                 <div class="space-y-1 mb-3 max-h-32 overflow-y-auto text-[10px]">
                     ${carrito.map((i, x) => `<div class="flex justify-between border-b border-blue-800 pb-1"><span>${i.c}x ${i.d}</span><div class="flex items-center gap-2"><span>S/ ${(i.p*i.c).toFixed(2)}</span><button onclick="delC(${x})"><i class="fas fa-times text-red-400"></i></button></div></div>`).join('')}
@@ -234,14 +238,12 @@
                 if(p) { p.stock -= i.c; await setDoc(doc(db_cloud, "productos", p.nombre), p); } 
             }
             imprimirTicket(cli, m, tot, carrito);
-            if(tel && confirm("¿Mandar WhatsApp?")) {
-                window.open(`https://wa.me/51${tel}?text=VCocharcas: Hola ${cli}, tu compra de S/ ${tot.toFixed(2)} fue registrada.`);
-            }
+            if(tel && confirm("¿WhatsApp?")) window.open(`https://wa.me/51${tel}?text=Hola ${cli}, compra S/ ${tot.toFixed(2)} lista.`);
             carrito = []; temporalCliente = { nombre: '', tel: '' }; await sync(); window.renderDashboard();
         };
 
         const imprimirTicket = (cli, m, tot, items) => {
-            if(!confirm("¿Imprimir ticket?")) return;
+            if(!confirm("¿Ticket?")) return;
             document.getElementById('t-fecha').innerText = new Date().toLocaleString();
             document.getElementById('t-cliente').innerText = cli;
             document.getElementById('t-tipo-pago').innerText = m;
@@ -255,12 +257,12 @@
                 <div class="space-y-3">
                     ${db.deudas.map(d => `<div class="bg-white p-4 rounded-2xl shadow flex justify-between border-l-8 border-yellow-500">
                         <div class="flex-1"><b class="uppercase text-sm">${d.cli}</b><p class="text-[9px] text-gray-400 mt-1">${d.detalle}</p></div>
-                        <div class="text-right"><b class="text-lg text-red-600 block">S/ ${d.monto.toFixed(2)}</b><button onclick="cobrar('${d.id}')" class="text-white bg-green-600 text-[9px] font-bold px-3 py-1 rounded-lg mt-2 uppercase shadow-sm">Ya Pagó</button></div>
+                        <div class="text-right"><b class="text-lg text-red-600 block">S/ ${d.monto.toFixed(2)}</b><button onclick="cobrar('${d.id}')" class="text-white bg-green-600 text-[9px] font-bold px-3 py-1 rounded-lg mt-2 uppercase shadow-sm">Cobrado</button></div>
                     </div>`).join('')}
                 </div>`;
         };
 
-        window.cobrar = async (id) => { if(confirm("¿Confirmar pago?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
+        window.cobrar = async (id) => { if(confirm("¿Pago confirmado?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
 
         window.renderAdmin = () => {
             document.getElementById('app-content').innerHTML = `
@@ -276,7 +278,7 @@
                     </div>
                     <div class="bg-red-50 p-6 rounded-3xl border border-red-100 shadow">
                         <p class="text-[10px] font-black uppercase text-red-400 mb-3 text-center">Reinicio de Sistema</p>
-                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Limpiar Toda la Base de Datos</button>
+                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Borrar Toda la Base de Datos</button>
                     </div>
                 </div>`;
         };
@@ -287,11 +289,9 @@
             reader.onload = async (e) => {
                 const bytes = new Uint8Array(e.target.result);
                 let contenido = new TextDecoder('utf-8').decode(bytes);
-                if (contenido.includes('')) {
-                    contenido = new TextDecoder('windows-1252').decode(bytes);
-                }
+                if (contenido.includes('')) contenido = new TextDecoder('windows-1252').decode(bytes);
                 const lines = contenido.split('\n');
-                alert("Sincronizando productos...");
+                alert("Procesando productos...");
                 for(let i=1; i<lines.length; i++) {
                     const d = lines[i].split(',');
                     if(d.length >= 3) {
@@ -299,7 +299,7 @@
                         await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseInt(d[3])||0, cat: (d[4]||"General").trim() });
                     }
                 }
-                alert("Nube Actualizada"); await sync(); renderInventario();
+                alert("Sincronizado"); await sync(); renderInventario();
             };
             reader.readAsArrayBuffer(input.files[0]);
         };
@@ -327,10 +327,7 @@
             link.click();
         };
 
-        // Inicio de App
-        await sync(); 
-        window.renderDashboard();
-
+        await sync(); window.renderDashboard();
     </script>
 </body>
 </html>
