@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vcocharcas Cloud POS v5.9</title>
+    <title>Vcocharcas Cloud POS v6.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -66,14 +66,16 @@
         let temporalCliente = { nombre: '', tel: '' }; 
 
         const sync = async () => {
-            const pSnap = await getDocs(collection(db_cloud, "productos"));
-            db.productos = pSnap.docs.map(d => d.data());
-            const tSnap = await getDocs(query(collection(db_cloud, "transacciones"), orderBy("timestamp", "desc")));
-            db.transacciones = tSnap.docs.map(d => d.data());
-            const dSnap = await getDocs(collection(db_cloud, "deudas"));
-            db.deudas = dSnap.docs.map(d => ({...d.data(), id: d.id}));
-            const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
-            document.getElementById('nav-balance').innerText = 'S/ ' + ingresos.toFixed(2);
+            try {
+                const pSnap = await getDocs(collection(db_cloud, "productos"));
+                db.productos = pSnap.docs.map(d => d.data());
+                const tSnap = await getDocs(query(collection(db_cloud, "transacciones"), orderBy("timestamp", "desc")));
+                db.transacciones = tSnap.docs.map(d => d.data());
+                const dSnap = await getDocs(collection(db_cloud, "deudas"));
+                db.deudas = dSnap.docs.map(d => ({...d.data(), id: d.id}));
+                const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
+                document.getElementById('nav-balance').innerText = 'S/ ' + ingresos.toFixed(2);
+            } catch (e) { console.error("Error de sincronización", e); }
         };
 
         window.renderDashboard = () => {
@@ -120,6 +122,7 @@
 
         window.editP = (nombre) => {
             const p = db.productos.find(x => x.nombre === nombre);
+            if(!p) return;
             document.getElementById('p-n').value = p.nombre; document.getElementById('p-n').disabled = true;
             document.getElementById('p-c').value = p.costo; document.getElementById('p-v').value = p.precio;
             document.getElementById('p-s').value = p.stock; document.getElementById('p-cat').value = p.cat;
@@ -141,7 +144,6 @@
 
         window.delP = async (n) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
 
-        // --- VENTAS (CON CORRECCIÓN DE FOCO) ---
         window.renderVenta = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="bg-white p-4 rounded-2xl shadow mb-4">
@@ -150,7 +152,7 @@
                         <input type="number" id="v-tel" oninput="saveTempCli()" placeholder="WhatsApp" value="${temporalCliente.tel}" class="p-2 border rounded-xl text-sm">
                     </div>
                     <div class="flex gap-2 mb-3 bg-blue-50 p-2 rounded-xl border border-blue-100">
-                        <input type="text" id="gen-nom" placeholder="Prod. General" class="flex-1 p-2 border rounded-lg text-xs" value="Varios">
+                        <input type="text" id="gen-nom" placeholder="Varios" class="flex-1 p-2 border rounded-lg text-xs" value="Varios">
                         <input type="number" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold">
                         <button onclick="addGeneric()" class="bg-blue-900 text-white px-3 rounded-lg text-xs font-bold"><i class="fas fa-plus"></i></button>
                     </div>
@@ -196,13 +198,15 @@
         window.fCat = (c) => { filtroCat = c; window.renderVenta(); };
 
         window.addCart = (n) => {
-            const p = db.productos.find(x => x.nombre === n), e = carrito.find(x => x.d === n);
+            const p = db.productos.find(x => x.nombre === n);
+            const e = carrito.find(x => x.d === n);
             if(e) e.c++; else carrito.push({ d: p.nombre, p: p.precio, c: 1, ut: (p.precio - (p.costo||0)) });
             rCart();
         };
 
         const rCart = () => {
-            const tot = carrito.reduce((a, b) => a + (b.p * b.c), 0), div = document.getElementById('cart-area'); if(!div) return;
+            const tot = carrito.reduce((a, b) => a + (b.p * b.c), 0);
+            const div = document.getElementById('cart-area'); if(!div) return;
             if(carrito.length===0) { div.innerHTML = `<p class="text-center opacity-30 italic text-xs">Carrito vacío...</p>`; return; }
             div.innerHTML = `
                 <div class="space-y-1 mb-3 max-h-32 overflow-y-auto text-[10px]">
@@ -250,9 +254,7 @@
             document.getElementById('app-content').innerHTML = `<h2 class="font-black text-blue-900 uppercase mb-4">Cuentas por Cobrar</h2>
                 <div class="space-y-3">
                     ${db.deudas.map(d => `<div class="bg-white p-4 rounded-2xl shadow flex justify-between border-l-8 border-yellow-500">
-                        <div class="flex-1"><b class="uppercase text-sm">${d.cli}</b><p class="text-[9px] text-gray-400 mt-1">${d.detalle}</p>
-                            <div class="flex gap-2 mt-2"><button onclick="reTicketDeuda('${d.id}')" class="text-[8px] bg-gray-100 px-2 py-1 rounded border uppercase font-bold text-gray-600">Ticket</button></div>
-                        </div>
+                        <div class="flex-1"><b class="uppercase text-sm">${d.cli}</b><p class="text-[9px] text-gray-400 mt-1">${d.detalle}</p></div>
                         <div class="text-right"><b class="text-lg text-red-600 block">S/ ${d.monto.toFixed(2)}</b><button onclick="cobrar('${d.id}')" class="text-white bg-green-600 text-[9px] font-bold px-3 py-1 rounded-lg mt-2 uppercase shadow-sm">Ya Pagó</button></div>
                     </div>`).join('')}
                 </div>`;
@@ -260,7 +262,6 @@
 
         window.cobrar = async (id) => { if(confirm("¿Confirmar pago?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
 
-        // --- ADMINISTRACIÓN (CON LIMPIAR TODO RESTAURADO) ---
         window.renderAdmin = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="space-y-4">
@@ -273,4 +274,63 @@
                         <input type="file" id="fCsv" class="text-xs mb-3 block w-full">
                         <button onclick="subirCSV()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Subir a la Nube</button>
                     </div>
-                    <div class="bg-red-50 p-
+                    <div class="bg-red-50 p-6 rounded-3xl border border-red-100 shadow">
+                        <p class="text-[10px] font-black uppercase text-red-400 mb-3 text-center">Reinicio de Sistema</p>
+                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Limpiar Toda la Base de Datos</button>
+                    </div>
+                </div>`;
+        };
+
+        window.subirCSV = () => {
+            const input = document.getElementById('fCsv'); if(!input.files[0]) return alert("Selecciona archivo");
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const bytes = new Uint8Array(e.target.result);
+                let contenido = new TextDecoder('utf-8').decode(bytes);
+                if (contenido.includes('')) {
+                    contenido = new TextDecoder('windows-1252').decode(bytes);
+                }
+                const lines = contenido.split('\n');
+                alert("Sincronizando productos...");
+                for(let i=1; i<lines.length; i++) {
+                    const d = lines[i].split(',');
+                    if(d.length >= 3) {
+                        const n = d[0].trim();
+                        await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseInt(d[3])||0, cat: (d[4]||"General").trim() });
+                    }
+                }
+                alert("Nube Actualizada"); await sync(); renderInventario();
+            };
+            reader.readAsArrayBuffer(input.files[0]);
+        };
+
+        window.borrarTodo = async () => {
+            if(!confirm("¿Borrar todo permanentemente?")) return;
+            const colecciones = ['productos', 'transacciones', 'deudas'];
+            for(const col of colecciones) {
+                const snap = await getDocs(collection(db_cloud, col));
+                const batch = writeBatch(db_cloud);
+                snap.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+            alert("Sistema Limpio"); await sync(); window.renderDashboard();
+        };
+
+        window.exp = (t) => {
+            let contenido = (t === 'v') ? "Fecha,Cliente,Monto,Utilidad\n" : "Nombre,Costo,Precio,Stock,Categoria\n";
+            if (t === 'v') db.transacciones.forEach(x => contenido += `${x.fecha},${x.cli},${x.monto},${x.utilidad}\n`);
+            else db.productos.forEach(x => contenido += `${x.nombre},${x.costo},${x.precio},${x.stock},${x.cat}\n`);
+            const blob = new Blob(["\ufeff" + contenido], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = (t === 'v' ? "ventas_vcocharcas.csv" : "stock_vcocharcas.csv");
+            link.click();
+        };
+
+        // Inicio de App
+        await sync(); 
+        window.renderDashboard();
+
+    </script>
+</body>
+</html>
