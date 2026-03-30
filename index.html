@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vcocharcas Cloud POS v6.1</title>
+    <title>Vcocharcas Cloud POS v6.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -137,10 +137,26 @@
         };
 
         window.addP = async () => {
-            const n = document.getElementById('p-n').value, v = parseFloat(document.getElementById('p-v').value);
-            if (!n || isNaN(v)) return alert("Faltan datos");
-            await setDoc(doc(db_cloud, "productos", n), { nombre: n, precio: v, costo: parseFloat(document.getElementById('p-c').value)||0, stock: parseInt(document.getElementById('p-s').value)||0, cat: document.getElementById('p-cat').value });
-            await sync(); window.renderInventario();
+            const n = document.getElementById('p-n').value.trim(), v = parseFloat(document.getElementById('p-v').value);
+            if (!n || isNaN(v)) return alert("Faltan datos (Nombre y Precio)");
+
+            // Validación de Duplicados
+            const esEdicion = document.getElementById('p-n').disabled;
+            if (!esEdicion) {
+                const existe = db.productos.find(p => p.nombre.toLowerCase() === n.toLowerCase());
+                if (existe) return alert(`El producto "${n}" ya existe. Búscalo en la lista para editarlo.`);
+            }
+
+            try {
+                await setDoc(doc(db_cloud, "productos", n), { 
+                    nombre: n, 
+                    precio: v, 
+                    costo: parseFloat(document.getElementById('p-c').value)||0, 
+                    stock: parseInt(document.getElementById('p-s').value)||0, 
+                    cat: document.getElementById('p-cat').value 
+                });
+                await sync(); window.renderInventario();
+            } catch (e) { alert("Error al guardar en la nube"); }
         };
 
         window.delP = async (n) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
