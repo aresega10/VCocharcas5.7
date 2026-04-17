@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vcocharcas Cloud POS v6.2</title>
+    <title>Vcocharcas Cloud POS v6.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @media print { body * { visibility: hidden; } #ticket-impresion, #ticket-impresion * { visibility: visible; } #ticket-impresion { position: absolute; left: 0; top: 0; width: 100%; display: block !important; } }
         .ticket-font { font-family: 'Courier New', Courier, monospace; line-height: 1.2; }
         .hide-scroll::-webkit-scrollbar { display: none; }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="bg-gray-100 pb-32">
 
+    <!-- Ticket Area -->
     <div id="ticket-impresion" class="hidden p-4 ticket-font text-xs bg-white w-[280px] mx-auto border border-black">
         <div class="text-center mb-1"><div class="font-black text-xl uppercase italic">VCOCHARCAS</div><p class="text-[9px] uppercase tracking-widest text-gray-500">S.M.P. - LIMA</p></div>
         <div class="my-1 border-b border-black border-dashed"></div>
@@ -73,38 +75,46 @@
                 db.transacciones = tSnap.docs.map(d => d.data());
                 const dSnap = await getDocs(collection(db_cloud, "deudas"));
                 db.deudas = dSnap.docs.map(d => ({...d.data(), id: d.id}));
-                const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
-                document.getElementById('nav-balance').innerText = 'S/ ' + ingresos.toFixed(2);
-            } catch (e) { console.error(e); }
+                
+                const hoy = new Date().toLocaleDateString();
+                const ingresosHoy = db.transacciones
+                    .filter(t => t.fecha && t.fecha.startsWith(hoy))
+                    .reduce((a, b) => a + (Number(b.monto) || 0), 0);
+                
+                document.getElementById('nav-balance').innerText = 'S/ ' + ingresosHoy.toFixed(2);
+            } catch (e) { console.error("Sync Error:", e); }
         };
 
+        // --- DASHBOARD ---
         window.renderDashboard = () => {
             const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
             const utilidad = db.transacciones.reduce((a, b) => a + (Number(b.utilidad) || 0), 0);
             document.getElementById('app-content').innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-white p-10 rounded-3xl shadow-lg text-center border-b-8 border-green-500">
-                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Efectivo Total</p>
+                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Efectivo Total Histórico</p>
                         <h1 class="text-5xl font-black text-blue-900 mt-2">S/ ${ingresos.toFixed(2)}</h1>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-blue-900 p-6 rounded-3xl text-center text-white"><p class="text-[8px] uppercase opacity-60 font-bold">Ganancia</p><h2 class="text-xl font-black text-green-400 italic">S/ ${utilidad.toFixed(2)}</h2></div>
+                        <div class="bg-blue-900 p-6 rounded-3xl text-center text-white"><p class="text-[8px] uppercase opacity-60 font-bold">Ganancia Total</p><h2 class="text-xl font-black text-green-400 italic">S/ ${utilidad.toFixed(2)}</h2></div>
                         <div class="bg-white p-6 rounded-3xl text-center border shadow-xl"><p class="text-[8px] uppercase font-bold text-gray-400 tracking-widest">Fiados</p><h2 class="text-xl font-black text-red-600 italic">S/ ${db.deudas.reduce((a,b)=>a+b.monto,0).toFixed(2)}</h2></div>
                     </div>
                 </div>`;
         };
 
+        // --- INVENTARIO ---
         window.renderInventario = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="bg-white p-5 rounded-2xl shadow mb-4">
                     <h3 id="inv-title" class="font-bold text-xs text-blue-900 uppercase mb-3 border-b pb-1">Gestión de Stock</h3>
-                    <input type="text" id="p-n" placeholder="Producto" class="w-full p-2 border mb-2 rounded-xl text-sm font-bold">
+                    <input type="text" id="p-n" oninput="checkDup(this.value)" placeholder="Producto" class="w-full p-2 border mb-1 rounded-xl text-sm font-bold">
+                    <div id="dup-warn" class="hidden text-[10px] text-red-500 italic mb-2 px-2"></div>
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <input type="number" id="p-c" placeholder="Costo S/" class="p-2 border rounded-xl text-xs">
-                        <input type="number" id="p-v" placeholder="Venta S/" class="p-2 border rounded-xl text-xs font-bold text-blue-600">
+                        <input type="number" step="0.01" id="p-c" placeholder="Costo S/" class="p-2 border rounded-xl text-xs">
+                        <input type="number" step="0.01" id="p-v" placeholder="Venta S/" class="p-2 border rounded-xl text-xs font-bold text-blue-600">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="p-s" placeholder="Stock" class="p-2 border rounded-xl text-xs">
+                        <input type="number" step="0.001" id="p-s" placeholder="Stock" class="p-2 border rounded-xl text-xs">
                         <select id="p-cat" class="p-2 border rounded-xl text-xs bg-gray-50">${db.categorias.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                     </div>
                     <div class="flex gap-2 mt-4">
@@ -121,6 +131,16 @@
                 </div>`;
         };
 
+        window.checkDup = (val) => {
+            const warn = document.getElementById('dup-warn');
+            if(!val || val.length < 3) { warn.classList.add('hidden'); return; }
+            const match = db.productos.find(p => p.nombre.toLowerCase().includes(val.toLowerCase()));
+            if(match && !document.getElementById('p-n').disabled) {
+                warn.innerText = `⚠️ Ya existe: ${match.nombre}`;
+                warn.classList.remove('hidden');
+            } else { warn.classList.add('hidden'); }
+        };
+
         window.editP = (nombre) => {
             const p = db.productos.find(x => x.nombre === nombre);
             if(!p) return;
@@ -128,31 +148,26 @@
             document.getElementById('p-c').value = p.costo; document.getElementById('p-v').value = p.precio;
             document.getElementById('p-s').value = p.stock; document.getElementById('p-cat').value = p.cat;
             document.getElementById('inv-title').innerText = "Modificando: " + p.nombre;
+            document.getElementById('dup-warn').classList.add('hidden');
         };
 
         window.limpiarFormInv = () => {
             document.getElementById('p-n').value = ""; document.getElementById('p-n').disabled = false;
             document.getElementById('p-c').value = ""; document.getElementById('p-v').value = "";
             document.getElementById('p-s').value = ""; document.getElementById('inv-title').innerText = "Nuevo Producto";
+            document.getElementById('dup-warn').classList.add('hidden');
         };
 
         window.addP = async () => {
             const n = document.getElementById('p-n').value.trim(), v = parseFloat(document.getElementById('p-v').value);
             if (!n || isNaN(v)) return alert("Faltan datos (Nombre y Precio)");
 
-            // Validación de Duplicados
-            const esEdicion = document.getElementById('p-n').disabled;
-            if (!esEdicion) {
-                const existe = db.productos.find(p => p.nombre.toLowerCase() === n.toLowerCase());
-                if (existe) return alert(`El producto "${n}" ya existe. Búscalo en la lista para editarlo.`);
-            }
-
             try {
                 await setDoc(doc(db_cloud, "productos", n), { 
                     nombre: n, 
                     precio: v, 
                     costo: parseFloat(document.getElementById('p-c').value)||0, 
-                    stock: parseInt(document.getElementById('p-s').value)||0, 
+                    stock: parseFloat(document.getElementById('p-s').value)||0, 
                     cat: document.getElementById('p-cat').value 
                 });
                 await sync(); window.renderInventario();
@@ -161,6 +176,7 @@
 
         window.delP = async (n) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
 
+        // --- VENTAS ---
         window.renderVenta = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="bg-white p-4 rounded-2xl shadow mb-4">
@@ -170,7 +186,7 @@
                     </div>
                     <div class="flex gap-2 mb-3 bg-blue-50 p-2 rounded-xl border border-blue-100">
                         <input type="text" id="gen-nom" placeholder="Varios" class="flex-1 p-2 border rounded-lg text-xs" value="Varios">
-                        <input type="number" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold">
+                        <input type="number" step="0.01" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold">
                         <button onclick="addGeneric()" class="bg-blue-900 text-white px-3 rounded-lg text-xs font-bold"><i class="fas fa-plus"></i></button>
                     </div>
                     <input type="text" id="bus-prod" onkeyup="busV(this.value)" placeholder="🔍 Buscar producto..." class="w-full p-3 border rounded-xl mb-3 bg-gray-50 text-sm">
@@ -220,8 +236,16 @@
         window.addCart = (n) => {
             const p = db.productos.find(x => x.nombre === n);
             const e = carrito.find(x => x.d === n);
-            if(e) e.c++; else carrito.push({ d: p.nombre, p: p.precio, c: 1, ut: (p.precio - (p.costo||0)) });
-            rCart();
+            if(e) {
+                const nC = prompt(`Cantidad para ${n}:`, e.c);
+                if(nC !== null) { e.c = parseFloat(nC); rCart(); }
+            } else {
+                const nC = prompt(`Cantidad para ${n}:`, "1");
+                if(nC !== null) {
+                    carrito.push({ d: p.nombre, p: p.precio, c: parseFloat(nC), ut: (p.precio - (p.costo||0)) });
+                    rCart();
+                }
+            }
         };
 
         const rCart = () => {
@@ -245,21 +269,40 @@
             if(carrito.length===0) return;
             const tot = carrito.reduce((a,b)=>a+(b.p*b.c), 0), uti = carrito.reduce((a,b)=>a+(b.ut*b.c), 0);
             const cli = temporalCliente.nombre || "Venta General", tel = temporalCliente.tel;
-            await addDoc(collection(db_cloud, "transacciones"), { monto: tot, utilidad: uti, metodo: m, cli: cli, timestamp: serverTimestamp(), fecha: new Date().toLocaleString() });
+            
+            await addDoc(collection(db_cloud, "transacciones"), { 
+                monto: tot, 
+                utilidad: uti, 
+                metodo: m, 
+                cli: cli, 
+                timestamp: serverTimestamp(), 
+                fecha: new Date().toLocaleString() 
+            });
+
             if(m === 'Fíado') {
-                await addDoc(collection(db_cloud, "deudas"), { cli: cli, tel: tel, monto: tot, fecha: new Date().toLocaleDateString(), detalle: carrito.map(x=>`${x.c}x ${x.d}`).join(', '), items: carrito });
+                await addDoc(collection(db_cloud, "deudas"), { 
+                    cli: cli, 
+                    tel: tel, 
+                    monto: tot, 
+                    fecha: new Date().toLocaleDateString(), 
+                    detalle: carrito.map(x=>`${x.c}x ${x.d}`).join(', '), 
+                    items: carrito 
+                });
             }
+
             for(const i of carrito) { 
                 const p = db.productos.find(x => x.nombre === i.d); 
-                if(p) { p.stock -= i.c; await setDoc(doc(db_cloud, "productos", p.nombre), p); } 
+                if(p) { p.stock = parseFloat((p.stock - i.c).toFixed(3)); await setDoc(doc(db_cloud, "productos", p.nombre), p); } 
             }
+
             imprimirTicket(cli, m, tot, carrito);
-            if(tel && confirm("¿WhatsApp?")) window.open(`https://wa.me/51${tel}?text=Hola ${cli}, compra S/ ${tot.toFixed(2)} lista.`);
+            if(tel && confirm("¿Enviar WhatsApp?")) window.open(`https://wa.me/51${tel}?text=Hola ${cli}, VCOCHARCAS le informa: Compra de S/ ${tot.toFixed(2)} realizada.`);
+            
             carrito = []; temporalCliente = { nombre: '', tel: '' }; await sync(); window.renderDashboard();
         };
 
         const imprimirTicket = (cli, m, tot, items) => {
-            if(!confirm("¿Ticket?")) return;
+            if(!confirm("¿Imprimir Ticket?")) return;
             document.getElementById('t-fecha').innerText = new Date().toLocaleString();
             document.getElementById('t-cliente').innerText = cli;
             document.getElementById('t-tipo-pago').innerText = m;
@@ -268,6 +311,7 @@
             window.print();
         };
 
+        // --- DEUDAS ---
         window.renderDeudas = () => {
             document.getElementById('app-content').innerHTML = `<h2 class="font-black text-blue-900 uppercase mb-4">Cuentas por Cobrar</h2>
                 <div class="space-y-3">
@@ -278,8 +322,9 @@
                 </div>`;
         };
 
-        window.cobrar = async (id) => { if(confirm("¿Pago confirmado?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
+        window.cobrar = async (id) => { if(confirm("¿Confirmar cobro?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
 
+        // --- ADMIN ---
         window.renderAdmin = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="space-y-4">
@@ -288,13 +333,13 @@
                         <button onclick="exp('s')" class="w-full bg-gray-100 text-blue-900 p-4 rounded-2xl font-bold uppercase text-xs border">Descargar Stock (CSV)</button>
                     </div>
                     <div class="bg-white p-6 rounded-3xl shadow">
-                        <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Importar Inventario</p>
+                        <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Importar Inventario (Limpia duplicados)</p>
                         <input type="file" id="fCsv" class="text-xs mb-3 block w-full">
                         <button onclick="subirCSV()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Subir a la Nube</button>
                     </div>
                     <div class="bg-red-50 p-6 rounded-3xl border border-red-100 shadow">
-                        <p class="text-[10px] font-black uppercase text-red-400 mb-3 text-center">Reinicio de Sistema</p>
-                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Borrar Toda la Base de Datos</button>
+                        <p class="text-[10px] font-black uppercase text-red-400 mb-3 text-center">Zona de Peligro</p>
+                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Borrar Toda la Nube</button>
                     </div>
                 </div>`;
         };
@@ -305,23 +350,29 @@
             reader.onload = async (e) => {
                 const bytes = new Uint8Array(e.target.result);
                 let contenido = new TextDecoder('utf-8').decode(bytes);
-                if (contenido.includes('')) contenido = new TextDecoder('windows-1252').decode(bytes);
                 const lines = contenido.split('\n');
-                alert("Procesando productos...");
+                alert("Procesando productos... Por favor espere.");
                 for(let i=1; i<lines.length; i++) {
                     const d = lines[i].split(',');
                     if(d.length >= 3) {
                         const n = d[0].trim();
-                        await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseInt(d[3])||0, cat: (d[4]||"General").trim() });
+                        if(!n) continue;
+                        await setDoc(doc(db_cloud, "productos", n), { 
+                            nombre: n, 
+                            costo: parseFloat(d[1])||0, 
+                            precio: parseFloat(d[2])||0, 
+                            stock: parseFloat(d[3])||0, 
+                            cat: (d[4]||"General").trim() 
+                        });
                     }
                 }
-                alert("Sincronizado"); await sync(); renderInventario();
+                alert("Sincronización masiva terminada"); await sync(); renderInventario();
             };
             reader.readAsArrayBuffer(input.files[0]);
         };
 
         window.borrarTodo = async () => {
-            if(!confirm("¿Borrar todo permanentemente?")) return;
+            if(!confirm("¿Borrar todo permanentemente de la nube?")) return;
             const colecciones = ['productos', 'transacciones', 'deudas'];
             for(const col of colecciones) {
                 const snap = await getDocs(collection(db_cloud, col));
@@ -329,7 +380,7 @@
                 snap.forEach(d => batch.delete(d.ref));
                 await batch.commit();
             }
-            alert("Sistema Limpio"); await sync(); window.renderDashboard();
+            alert("Nube vaciada correctamente"); await sync(); window.renderDashboard();
         };
 
         window.exp = (t) => {
@@ -339,7 +390,7 @@
             const blob = new Blob(["\ufeff" + contenido], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = (t === 'v' ? "ventas_vcocharcas.csv" : "stock_vcocharcas.csv");
+            link.download = (t === 'v' ? "ventas_cloud.csv" : "stock_cloud.csv");
             link.click();
         };
 
