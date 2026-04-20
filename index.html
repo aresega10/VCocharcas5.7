@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vcocharcas Cloud POS v6.2</title>
+    <title>Vcocharcas Cloud v6.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @media print { body * { visibility: hidden; } #ticket-impresion, #ticket-impresion * { visibility: visible; } #ticket-impresion { position: absolute; left: 0; top: 0; width: 100%; display: block !important; } }
         .ticket-font { font-family: 'Courier New', Courier, monospace; line-height: 1.2; }
         .hide-scroll::-webkit-scrollbar { display: none; }
+        input:disabled { background-color: #f9fafb; color: #9ca3af; border-color: #d1d5db !important; }
     </style>
 </head>
 <body class="bg-gray-100 pb-32">
@@ -28,7 +29,7 @@
 
     <nav class="bg-blue-900 text-white p-4 sticky top-0 z-50 shadow-md">
         <div class="flex justify-between items-center max-w-lg mx-auto">
-            <h1 class="text-xl font-bold italic uppercase tracking-tighter">Vcocharcas</h1>
+            <h1 class="text-xl font-bold italic uppercase tracking-tighter">Vcocharcas Cloud</h1>
             <div class="text-right"><p id="nav-balance" class="font-black text-lg text-green-400 leading-none">S/ 0.00</p></div>
         </div>
     </nav>
@@ -64,18 +65,27 @@
         let filtroCat = 'Todos';
         let busquedaVenta = '';
         let temporalCliente = { nombre: '', tel: '' }; 
+        let timerVerificacion;
 
         const sync = async () => {
             try {
                 const pSnap = await getDocs(collection(db_cloud, "productos"));
                 db.productos = pSnap.docs.map(d => d.data());
+                
                 const tSnap = await getDocs(query(collection(db_cloud, "transacciones"), orderBy("timestamp", "desc")));
                 db.transacciones = tSnap.docs.map(d => d.data());
+                
                 const dSnap = await getDocs(collection(db_cloud, "deudas"));
                 db.deudas = dSnap.docs.map(d => ({...d.data(), id: d.id}));
+                
                 const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
                 document.getElementById('nav-balance').innerText = 'S/ ' + ingresos.toFixed(2);
-            } catch (e) { console.error(e); }
+                
+                // Si el usuario está en la pantalla de stock, refrescar la lista
+                const listaH = document.getElementById('lista-inv-render');
+                if(listaH) renderInventario();
+
+            } catch (e) { console.error("Error Sync:", e); }
         };
 
         window.renderDashboard = () => {
@@ -97,57 +107,107 @@
         window.renderInventario = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="bg-white p-5 rounded-2xl shadow mb-4">
-                    <h3 id="inv-title" class="font-bold text-xs text-blue-900 uppercase mb-3 border-b pb-1">Gestión de Stock</h3>
-                    <input type="text" id="p-n" placeholder="Producto" class="w-full p-2 border mb-2 rounded-xl text-sm font-bold">
+                    <h3 id="inv-title" class="font-bold text-xs text-blue-900 uppercase mb-3 border-b pb-1 italic tracking-tighter">Gestión de Stock</h3>
+                    
+                    <div class="mb-3">
+                        <input type="text" id="p-n" oninput="validarNombreCloud(this.value)" placeholder="Nombre del Producto" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm font-bold outline-none transition-all">
+                        <div id="feedback-n" class="h-4 px-1 mt-1"></div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <input type="number" id="p-c" placeholder="Costo S/" class="p-2 border rounded-xl text-xs">
-                        <input type="number" id="p-v" placeholder="Venta S/" class="p-2 border rounded-xl text-xs font-bold text-blue-600">
+                        <div class="text-center"><label class="text-[8px] font-bold text-gray-400 uppercase">Costo S/</label><input type="number" id="p-c" placeholder="0.00" class="w-full p-2 border rounded-xl text-xs"></div>
+                        <div class="text-center"><label class="text-[8px] font-bold text-gray-400 uppercase">Venta S/</label><input type="number" id="p-v" placeholder="0.00" class="w-full p-2 border rounded-xl text-xs font-bold text-blue-600"></div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="p-s" placeholder="Stock" class="p-2 border rounded-xl text-xs">
-                        <select id="p-cat" class="p-2 border rounded-xl text-xs bg-gray-50">${db.categorias.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                        <div class="text-center"><label class="text-[8px] font-bold text-gray-400 uppercase">Stock Actual</label><input type="number" id="p-s" placeholder="0" class="w-full p-2 border rounded-xl text-xs"></div>
+                        <div class="text-center"><label class="text-[8px] font-bold text-gray-400 uppercase">Categoría</label><select id="p-cat" class="w-full p-2 border rounded-xl text-xs bg-gray-50">${db.categorias.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
                     </div>
                     <div class="flex gap-2 mt-4">
-                        <button onclick="addP()" class="flex-1 bg-blue-900 text-white p-3 rounded-xl font-bold uppercase shadow text-xs">Guardar</button>
+                        <button id="btn-guardar-p" onclick="addP()" class="flex-1 bg-blue-900 text-white p-3 rounded-xl font-bold uppercase shadow text-xs active:scale-95 transition-transform">Guardar Producto</button>
                         <button onclick="limpiarFormInv()" class="bg-gray-100 text-gray-400 p-3 rounded-xl font-bold uppercase text-[10px]">Nuevo</button>
                     </div>
                 </div>
-                <div class="space-y-2">
+                <div class="space-y-2" id="lista-inv-render">
                     ${db.productos.slice().sort((a,b) => a.nombre.localeCompare(b.nombre)).map(p => `
                     <div class="bg-white p-3 rounded-xl flex justify-between items-center shadow-sm border-l-4 border-blue-900" onclick="editP('${p.nombre}')">
-                        <div class="flex-1"><b class="text-sm uppercase">${p.nombre}</b><br><small class="text-gray-400">Stock: ${p.stock} | ${p.cat}</small></div>
-                        <div class="text-right flex items-center gap-3"><b class="text-blue-900 italic">S/ ${p.precio.toFixed(2)}</b><button onclick="event.stopPropagation(); delP('${p.nombre}')" class="text-red-300 text-xs"><i class="fas fa-trash"></i></button></div>
+                        <div class="flex-1"><b class="text-sm uppercase">${p.nombre}</b><br><small class="text-gray-400 font-bold">STOCK: ${p.stock} | ${p.cat}</small></div>
+                        <div class="text-right flex items-center gap-3"><b class="text-blue-900 italic">S/ ${p.precio.toFixed(2)}</b><button onclick="event.stopPropagation(); delP('${p.nombre}')" class="text-red-200 text-xs"><i class="fas fa-trash"></i></button></div>
                     </div>`).join('')}
                 </div>`;
+        };
+
+        window.validarNombreCloud = (valor) => {
+            const input = document.getElementById('p-n');
+            const feedback = document.getElementById('feedback-n');
+            const btn = document.getElementById('btn-guardar-p');
+            const nombre = valor.trim().toLowerCase();
+
+            if (input.disabled) return; 
+            clearTimeout(timerVerificacion);
+            
+            if (nombre.length < 2) {
+                input.style.borderColor = "#e5e7eb";
+                feedback.innerText = "";
+                return;
+            }
+
+            timerVerificacion = setTimeout(() => {
+                const existe = db.productos.find(p => p.nombre.toLowerCase() === nombre);
+                if (existe) {
+                    feedback.innerHTML = `<span class="text-[10px] text-red-600 font-black italic uppercase">⚠️ YA EXISTE (Stock: ${existe.stock})</span>`;
+                    input.style.borderColor = "#ef4444";
+                    btn.disabled = true;
+                    btn.style.opacity = "0.5";
+                } else {
+                    feedback.innerHTML = `<span class="text-[10px] text-green-600 font-black italic uppercase">✅ DISPONIBLE</span>`;
+                    input.style.borderColor = "#22c55e";
+                    btn.disabled = false;
+                    btn.style.opacity = "1";
+                }
+            }, 300);
         };
 
         window.editP = (nombre) => {
             const p = db.productos.find(x => x.nombre === nombre);
             if(!p) return;
-            document.getElementById('p-n').value = p.nombre; document.getElementById('p-n').disabled = true;
-            document.getElementById('p-c').value = p.costo; document.getElementById('p-v').value = p.precio;
-            document.getElementById('p-s').value = p.stock; document.getElementById('p-cat').value = p.cat;
-            document.getElementById('inv-title').innerText = "Modificando: " + p.nombre;
+            const inputNom = document.getElementById('p-n');
+            inputNom.value = p.nombre; 
+            inputNom.disabled = true;
+            inputNom.style.borderColor = "#1e3a8a";
+            
+            document.getElementById('p-c').value = p.costo; 
+            document.getElementById('p-v').value = p.precio;
+            document.getElementById('p-s').value = p.stock; 
+            document.getElementById('p-cat').value = p.cat;
+            document.getElementById('inv-title').innerText = "MODIFICANDO: " + p.nombre;
+            document.getElementById('feedback-n').innerText = "";
+            document.getElementById('btn-guardar-p').disabled = false;
+            document.getElementById('btn-guardar-p').style.opacity = "1";
         };
 
         window.limpiarFormInv = () => {
-            document.getElementById('p-n').value = ""; document.getElementById('p-n').disabled = false;
-            document.getElementById('p-c').value = ""; document.getElementById('p-v').value = "";
-            document.getElementById('p-s').value = ""; document.getElementById('inv-title').innerText = "Nuevo Producto";
+            const inputNom = document.getElementById('p-n');
+            inputNom.value = ""; 
+            inputNom.disabled = false;
+            inputNom.style.borderColor = "#e5e7eb";
+            
+            document.getElementById('p-c').value = ""; 
+            document.getElementById('p-v').value = "";
+            document.getElementById('p-s').value = ""; 
+            document.getElementById('inv-title').innerText = "Gestión de Stock";
+            document.getElementById('feedback-n').innerText = "";
+            document.getElementById('btn-guardar-p').disabled = false;
+            document.getElementById('btn-guardar-p').style.opacity = "1";
         };
 
         window.addP = async () => {
             const n = document.getElementById('p-n').value.trim(), v = parseFloat(document.getElementById('p-v').value);
-            if (!n || isNaN(v)) return alert("Faltan datos (Nombre y Precio)");
-
-            // Validación de Duplicados
-            const esEdicion = document.getElementById('p-n').disabled;
-            if (!esEdicion) {
-                const existe = db.productos.find(p => p.nombre.toLowerCase() === n.toLowerCase());
-                if (existe) return alert(`El producto "${n}" ya existe. Búscalo en la lista para editarlo.`);
-            }
+            if (!n || isNaN(v)) return alert("Nombre y Precio obligatorios");
 
             try {
+                const btn = document.getElementById('btn-guardar-p');
+                btn.innerText = "Guardando..."; btn.disabled = true;
+                
                 await setDoc(doc(db_cloud, "productos", n), { 
                     nombre: n, 
                     precio: v, 
@@ -155,12 +215,15 @@
                     stock: parseInt(document.getElementById('p-s').value)||0, 
                     cat: document.getElementById('p-cat').value 
                 });
-                await sync(); window.renderInventario();
-            } catch (e) { alert("Error al guardar en la nube"); }
+                await sync(); 
+                limpiarFormInv();
+                renderInventario();
+            } catch (e) { alert("Error de red"); }
         };
 
-        window.delP = async (n) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
+        window.delP = async (n) => { if(confirm("¿Eliminar producto?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); renderInventario(); }};
 
+        // --- VENTAS ---
         window.renderVenta = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="bg-white p-4 rounded-2xl shadow mb-4">
@@ -170,13 +233,13 @@
                     </div>
                     <div class="flex gap-2 mb-3 bg-blue-50 p-2 rounded-xl border border-blue-100">
                         <input type="text" id="gen-nom" placeholder="Varios" class="flex-1 p-2 border rounded-lg text-xs" value="Varios">
-                        <input type="number" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold">
-                        <button onclick="addGeneric()" class="bg-blue-900 text-white px-3 rounded-lg text-xs font-bold"><i class="fas fa-plus"></i></button>
+                        <input type="number" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold text-blue-900">
+                        <button onclick="addGeneric()" class="bg-blue-900 text-white px-3 rounded-lg text-xs"><i class="fas fa-plus"></i></button>
                     </div>
-                    <input type="text" id="bus-prod" onkeyup="busV(this.value)" placeholder="🔍 Buscar producto..." class="w-full p-3 border rounded-xl mb-3 bg-gray-50 text-sm">
+                    <input type="text" id="bus-prod" onkeyup="busV(this.value)" placeholder="🔍 Buscar producto..." class="w-full p-3 border rounded-xl mb-3 bg-gray-50 text-sm font-bold">
                     <div class="flex gap-2 mb-3 overflow-x-auto hide-scroll pb-1">
-                        <button onclick="fCat('Todos')" class="px-3 py-1 rounded-full text-[10px] font-bold ${filtroCat==='Todos'?'bg-blue-900 text-white':'bg-gray-100'}">Todos</button>
-                        ${db.categorias.map(c => `<button onclick="fCat('${c}')" class="px-3 py-1 rounded-full text-[10px] font-bold ${filtroCat===c?'bg-blue-900 text-white':'bg-gray-100'}">${c}</button>`).join('')}
+                        <button onclick="fCat('Todos')" class="px-3 py-1 rounded-full text-[10px] font-bold ${filtroCat==='Todos'?'bg-blue-900 text-white':'bg-white text-gray-400 border'}">Todos</button>
+                        ${db.categorias.map(c => `<button onclick="fCat('${c}')" class="px-3 py-1 rounded-full text-[10px] font-bold ${filtroCat===c?'bg-blue-900 text-white':'bg-white text-gray-400 border'}">${c}</button>`).join('')}
                     </div>
                     <div id="lista-productos-venta" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
                         ${renderListaProds()}
@@ -188,10 +251,9 @@
             document.getElementById('bus-prod').focus();
         };
 
-        window.busV = (v) => { 
-            busquedaVenta = v; 
-            document.getElementById('lista-productos-venta').innerHTML = renderListaProds();
-        };
+        window.busV = (v) => { busquedaVenta = v; document.getElementById('lista-productos-venta').innerHTML = renderListaProds(); };
+        window.fCat = (c) => { filtroCat = c; window.renderVenta(); };
+        window.saveTempCli = () => { temporalCliente.nombre = document.getElementById('v-cli').value; temporalCliente.tel = document.getElementById('v-tel').value; };
 
         const renderListaProds = () => {
             return db.productos
@@ -204,18 +266,11 @@
                 </button>`).join('');
         };
 
-        window.saveTempCli = () => {
-            temporalCliente.nombre = document.getElementById('v-cli').value;
-            temporalCliente.tel = document.getElementById('v-tel').value;
-        };
-
         window.addGeneric = () => {
             const n = document.getElementById('gen-nom').value || "Varios", p = parseFloat(document.getElementById('gen-pre').value);
-            if(isNaN(p) || p <= 0) return alert("Ingresa precio");
+            if(isNaN(p) || p <= 0) return;
             carrito.push({ d: n, p: p, c: 1, ut: 0 }); document.getElementById('gen-pre').value = ""; rCart();
         };
-
-        window.fCat = (c) => { filtroCat = c; window.renderVenta(); };
 
         window.addCart = (n) => {
             const p = db.productos.find(x => x.nombre === n);
@@ -227,15 +282,15 @@
         const rCart = () => {
             const tot = carrito.reduce((a, b) => a + (b.p * b.c), 0);
             const div = document.getElementById('cart-area'); if(!div) return;
-            if(carrito.length===0) { div.innerHTML = `<p class="text-center opacity-30 italic text-xs">Vacío...</p>`; return; }
+            if(carrito.length===0) { div.innerHTML = `<p class="text-center opacity-30 italic text-xs">Esperando venta...</p>`; return; }
             div.innerHTML = `
                 <div class="space-y-1 mb-3 max-h-32 overflow-y-auto text-[10px]">
                     ${carrito.map((i, x) => `<div class="flex justify-between border-b border-blue-800 pb-1"><span>${i.c}x ${i.d}</span><div class="flex items-center gap-2"><span>S/ ${(i.p*i.c).toFixed(2)}</span><button onclick="delC(${x})"><i class="fas fa-times text-red-400"></i></button></div></div>`).join('')}
                 </div>
                 <div class="flex justify-between font-black text-xl border-t border-blue-700 pt-2"><span>TOTAL</span><span>S/ ${tot.toFixed(2)}</span></div>
                 <div class="grid grid-cols-2 gap-2 mt-4">
-                    <button onclick="finV('Contado')" class="bg-green-500 py-3 rounded-xl font-bold uppercase text-[10px]">Efectivo</button>
-                    <button onclick="finV('Fíado')" class="bg-yellow-500 py-3 rounded-xl font-bold uppercase text-[10px]">Fíado</button>
+                    <button onclick="finV('Contado')" class="bg-green-600 py-4 rounded-xl font-black uppercase text-[11px] shadow-lg">Efectivo</button>
+                    <button onclick="finV('Fíado')" class="bg-orange-500 py-4 rounded-xl font-black uppercase text-[11px] shadow-lg italic">Fíado</button>
                 </div>`;
         };
 
@@ -245,21 +300,26 @@
             if(carrito.length===0) return;
             const tot = carrito.reduce((a,b)=>a+(b.p*b.c), 0), uti = carrito.reduce((a,b)=>a+(b.ut*b.c), 0);
             const cli = temporalCliente.nombre || "Venta General", tel = temporalCliente.tel;
+            
             await addDoc(collection(db_cloud, "transacciones"), { monto: tot, utilidad: uti, metodo: m, cli: cli, timestamp: serverTimestamp(), fecha: new Date().toLocaleString() });
+            
             if(m === 'Fíado') {
-                await addDoc(collection(db_cloud, "deudas"), { cli: cli, tel: tel, monto: tot, fecha: new Date().toLocaleDateString(), detalle: carrito.map(x=>`${x.c}x ${x.d}`).join(', '), items: carrito });
+                await addDoc(collection(db_cloud, "deudas"), { cli: cli, tel: tel, monto: tot, fecha: new Date().toLocaleDateString(), detalle: carrito.map(x=>`${x.c}x ${x.d}`).join(', ') });
             }
+            
             for(const i of carrito) { 
                 const p = db.productos.find(x => x.nombre === i.d); 
                 if(p) { p.stock -= i.c; await setDoc(doc(db_cloud, "productos", p.nombre), p); } 
             }
+            
             imprimirTicket(cli, m, tot, carrito);
-            if(tel && confirm("¿WhatsApp?")) window.open(`https://wa.me/51${tel}?text=Hola ${cli}, compra S/ ${tot.toFixed(2)} lista.`);
-            carrito = []; temporalCliente = { nombre: '', tel: '' }; await sync(); window.renderDashboard();
+            if(tel && m === 'Fíado') window.open(`https://wa.me/51${tel}?text=Hola ${cli}, tienes una cuenta de S/ ${tot.toFixed(2)} en VCocharcas.`);
+            
+            carrito = []; temporalCliente = { nombre: '', tel: '' }; await sync(); renderDashboard();
         };
 
         const imprimirTicket = (cli, m, tot, items) => {
-            if(!confirm("¿Ticket?")) return;
+            if(!confirm("¿Imprimir ticket?")) return;
             document.getElementById('t-fecha').innerText = new Date().toLocaleString();
             document.getElementById('t-cliente').innerText = cli;
             document.getElementById('t-tipo-pago').innerText = m;
@@ -269,45 +329,39 @@
         };
 
         window.renderDeudas = () => {
-            document.getElementById('app-content').innerHTML = `<h2 class="font-black text-blue-900 uppercase mb-4">Cuentas por Cobrar</h2>
+            document.getElementById('app-content').innerHTML = `
+                <h2 class="font-black text-blue-900 uppercase mb-4 italic">Cuentas por Cobrar</h2>
                 <div class="space-y-3">
-                    ${db.deudas.map(d => `<div class="bg-white p-4 rounded-2xl shadow flex justify-between border-l-8 border-yellow-500">
-                        <div class="flex-1"><b class="uppercase text-sm">${d.cli}</b><p class="text-[9px] text-gray-400 mt-1">${d.detalle}</p></div>
-                        <div class="text-right"><b class="text-lg text-red-600 block">S/ ${d.monto.toFixed(2)}</b><button onclick="cobrar('${d.id}')" class="text-white bg-green-600 text-[9px] font-bold px-3 py-1 rounded-lg mt-2 uppercase shadow-sm">Cobrado</button></div>
+                    ${db.deudas.map(d => `<div class="bg-white p-4 rounded-2xl shadow flex justify-between border-l-8 border-orange-500">
+                        <div class="flex-1"><b class="uppercase text-sm">${d.cli}</b><p class="text-[9px] text-gray-400 font-bold mt-1 uppercase">${d.detalle}</p></div>
+                        <div class="text-right"><b class="text-lg text-red-600 block font-black">S/ ${d.monto.toFixed(2)}</b><button onclick="cobrar('${d.id}')" class="text-white bg-green-600 text-[9px] font-bold px-3 py-1 rounded-lg mt-2 uppercase shadow">Cobrado</button></div>
                     </div>`).join('')}
                 </div>`;
         };
 
-        window.cobrar = async (id) => { if(confirm("¿Pago confirmado?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
+        window.cobrar = async (id) => { if(confirm("¿Pago recibido?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
 
         window.renderAdmin = () => {
             document.getElementById('app-content').innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-white p-6 rounded-3xl shadow">
-                        <button onclick="exp('v')" class="w-full bg-blue-900 text-white p-4 rounded-2xl font-bold uppercase text-xs mb-2">Descargar Ventas (CSV)</button>
-                        <button onclick="exp('s')" class="w-full bg-gray-100 text-blue-900 p-4 rounded-2xl font-bold uppercase text-xs border">Descargar Stock (CSV)</button>
+                        <button onclick="exp('v')" class="w-full bg-blue-900 text-white p-4 rounded-2xl font-bold uppercase text-xs mb-2">Exportar Ventas</button>
+                        <button onclick="exp('s')" class="w-full bg-gray-100 text-blue-900 p-4 rounded-2xl font-bold uppercase text-xs border">Exportar Stock</button>
                     </div>
                     <div class="bg-white p-6 rounded-3xl shadow">
-                        <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Importar Inventario</p>
+                        <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Carga Masiva CSV</p>
                         <input type="file" id="fCsv" class="text-xs mb-3 block w-full">
-                        <button onclick="subirCSV()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Subir a la Nube</button>
+                        <button onclick="subirCSV()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Subir a Firebase</button>
                     </div>
-                    <div class="bg-red-50 p-6 rounded-3xl border border-red-100 shadow">
-                        <p class="text-[10px] font-black uppercase text-red-400 mb-3 text-center">Reinicio de Sistema</p>
-                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Borrar Toda la Base de Datos</button>
-                    </div>
+                    <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-500 p-4 rounded-2xl font-bold uppercase text-[10px]">Borrar Todo (Peligro)</button>
                 </div>`;
         };
 
         window.subirCSV = () => {
-            const input = document.getElementById('fCsv'); if(!input.files[0]) return alert("Selecciona archivo");
+            const input = document.getElementById('fCsv'); if(!input.files[0]) return;
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const bytes = new Uint8Array(e.target.result);
-                let contenido = new TextDecoder('utf-8').decode(bytes);
-                if (contenido.includes('')) contenido = new TextDecoder('windows-1252').decode(bytes);
-                const lines = contenido.split('\n');
-                alert("Procesando productos...");
+                const lines = new TextDecoder('utf-8').decode(e.target.result).split('\n');
                 for(let i=1; i<lines.length; i++) {
                     const d = lines[i].split(',');
                     if(d.length >= 3) {
@@ -315,13 +369,13 @@
                         await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseInt(d[3])||0, cat: (d[4]||"General").trim() });
                     }
                 }
-                alert("Sincronizado"); await sync(); renderInventario();
+                alert("Importación completa"); await sync(); renderInventario();
             };
             reader.readAsArrayBuffer(input.files[0]);
         };
 
         window.borrarTodo = async () => {
-            if(!confirm("¿Borrar todo permanentemente?")) return;
+            if(!confirm("¿ELIMINAR TODA LA NUBE?")) return;
             const colecciones = ['productos', 'transacciones', 'deudas'];
             for(const col of colecciones) {
                 const snap = await getDocs(collection(db_cloud, col));
@@ -329,7 +383,7 @@
                 snap.forEach(d => batch.delete(d.ref));
                 await batch.commit();
             }
-            alert("Sistema Limpio"); await sync(); window.renderDashboard();
+            alert("Sistema reseteado"); await sync(); window.renderDashboard();
         };
 
         window.exp = (t) => {
