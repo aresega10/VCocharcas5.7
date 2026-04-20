@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vcocharcas Cloud POS v6.2</title>
+    <title>Vcocharcas Cloud POS v6.2.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -29,7 +29,7 @@
     <nav class="bg-blue-900 text-white p-4 sticky top-0 z-50 shadow-md">
         <div class="flex justify-between items-center max-w-lg mx-auto">
             <h1 class="text-xl font-bold italic uppercase tracking-tighter">Vcocharcas</h1>
-            <div class="text-right"><p id="nav-balance" class="font-black text-lg text-green-400 leading-none">S/ 0.00</p></div>
+            <div class="text-right"><p id="nav-balance" class="font-black text-lg text-green-400 leading-none">Cargando...</p></div>
         </div>
     </nav>
 
@@ -75,7 +75,10 @@
                 db.deudas = dSnap.docs.map(d => ({...d.data(), id: d.id}));
                 const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
                 document.getElementById('nav-balance').innerText = 'S/ ' + ingresos.toFixed(2);
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                document.getElementById('nav-balance').innerText = 'ERROR';
+                alert("Error de conexión con la base de datos."); 
+            }
         };
 
         window.renderDashboard = () => {
@@ -100,11 +103,11 @@
                     <h3 id="inv-title" class="font-bold text-xs text-blue-900 uppercase mb-3 border-b pb-1">Gestión de Stock</h3>
                     <input type="text" id="p-n" placeholder="Producto" class="w-full p-2 border mb-2 rounded-xl text-sm font-bold">
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <input type="number" id="p-c" placeholder="Costo S/" class="p-2 border rounded-xl text-xs">
-                        <input type="number" id="p-v" placeholder="Venta S/" class="p-2 border rounded-xl text-xs font-bold text-blue-600">
+                        <input type="number" step="any" id="p-c" placeholder="Costo S/" class="p-2 border rounded-xl text-xs">
+                        <input type="number" step="any" id="p-v" placeholder="Venta S/" class="p-2 border rounded-xl text-xs font-bold text-blue-600">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="p-s" placeholder="Stock" class="p-2 border rounded-xl text-xs">
+                        <input type="number" step="any" id="p-s" placeholder="Stock" class="p-2 border rounded-xl text-xs">
                         <select id="p-cat" class="p-2 border rounded-xl text-xs bg-gray-50">${db.categorias.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                     </div>
                     <div class="flex gap-2 mt-4">
@@ -121,45 +124,49 @@
                 </div>`;
         };
 
-        window.editP = (nombre) => {
-            const p = db.productos.find(x => x.nombre === nombre);
-            if(!p) return;
-            document.getElementById('p-n').value = p.nombre; document.getElementById('p-n').disabled = true;
-            document.getElementById('p-c').value = p.costo; document.getElementById('p-v').value = p.precio;
-            document.getElementById('p-s').value = p.stock; document.getElementById('p-cat').value = p.cat;
-            document.getElementById('inv-title').innerText = "Modificando: " + p.nombre;
-        };
-
-        window.limpiarFormInv = () => {
-            document.getElementById('p-n').value = ""; document.getElementById('p-n').disabled = false;
-            document.getElementById('p-c').value = ""; document.getElementById('p-v').value = "";
-            document.getElementById('p-s').value = ""; document.getElementById('inv-title').innerText = "Nuevo Producto";
-        };
-
         window.addP = async () => {
-            const n = document.getElementById('p-n').value.trim(), v = parseFloat(document.getElementById('p-v').value);
-            if (!n || isNaN(v)) return alert("Faltan datos (Nombre y Precio)");
+            const n = document.getElementById('p-n').value.trim();
+            const v = parseFloat(document.getElementById('p-v').value);
+            if (!n || isNaN(v)) return alert("Faltan datos obligatorios.");
 
-            // Validación de Duplicados
+            // VALIDACIÓN DE DUPLICADOS (Ignora mayúsculas/minúsculas)
             const esEdicion = document.getElementById('p-n').disabled;
             if (!esEdicion) {
                 const existe = db.productos.find(p => p.nombre.toLowerCase() === n.toLowerCase());
-                if (existe) return alert(`El producto "${n}" ya existe. Búscalo en la lista para editarlo.`);
+                if (existe) {
+                    alert(`¡ERROR! El producto "${n}" ya existe en la base de datos.`);
+                    return;
+                }
             }
 
             try {
                 await setDoc(doc(db_cloud, "productos", n), { 
                     nombre: n, 
                     precio: v, 
-                    costo: parseFloat(document.getElementById('p-c').value)||0, 
-                    stock: parseInt(document.getElementById('p-s').value)||0, 
+                    costo: parseFloat(document.getElementById('p-c').value) || 0, 
+                    stock: parseFloat(document.getElementById('p-s').value) || 0, 
                     cat: document.getElementById('p-cat').value 
                 });
                 await sync(); window.renderInventario();
-            } catch (e) { alert("Error al guardar en la nube"); }
+            } catch (e) { alert("Error al guardar en la nube."); }
         };
 
-        window.delP = async (n) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
+        window.editP = (nombre) => {
+            const p = db.productos.find(x => x.nombre === nombre);
+            if(!p) return;
+            document.getElementById('p-n').value = p.nombre; document.getElementById('p-n').disabled = true;
+            document.getElementById('p-c').value = p.costo; document.getElementById('p-v').value = p.precio;
+            document.getElementById('p-s').value = p.stock; document.getElementById('p-cat').value = p.cat;
+            document.getElementById('inv-title').innerText = "Editando: " + p.nombre;
+        };
+
+        window.limpiarFormInv = () => {
+            document.getElementById('p-n').value = ""; document.getElementById('p-n').disabled = false;
+            document.getElementById('p-c').value = ""; document.getElementById('p-v').value = "";
+            document.getElementById('p-s').value = ""; document.getElementById('inv-title').innerText = "Gestión de Stock";
+        };
+
+        window.delP = async (n) => { if(confirm("¿Eliminar producto?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
 
         window.renderVenta = () => {
             document.getElementById('app-content').innerHTML = `
@@ -170,7 +177,7 @@
                     </div>
                     <div class="flex gap-2 mb-3 bg-blue-50 p-2 rounded-xl border border-blue-100">
                         <input type="text" id="gen-nom" placeholder="Varios" class="flex-1 p-2 border rounded-lg text-xs" value="Varios">
-                        <input type="number" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold">
+                        <input type="number" step="any" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold">
                         <button onclick="addGeneric()" class="bg-blue-900 text-white px-3 rounded-lg text-xs font-bold"><i class="fas fa-plus"></i></button>
                     </div>
                     <input type="text" id="bus-prod" onkeyup="busV(this.value)" placeholder="🔍 Buscar producto..." class="w-full p-3 border rounded-xl mb-3 bg-gray-50 text-sm">
@@ -188,10 +195,7 @@
             document.getElementById('bus-prod').focus();
         };
 
-        window.busV = (v) => { 
-            busquedaVenta = v; 
-            document.getElementById('lista-productos-venta').innerHTML = renderListaProds();
-        };
+        window.busV = (v) => { busquedaVenta = v; document.getElementById('lista-productos-venta').innerHTML = renderListaProds(); };
 
         const renderListaProds = () => {
             return db.productos
@@ -292,10 +296,6 @@
                         <input type="file" id="fCsv" class="text-xs mb-3 block w-full">
                         <button onclick="subirCSV()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Subir a la Nube</button>
                     </div>
-                    <div class="bg-red-50 p-6 rounded-3xl border border-red-100 shadow">
-                        <p class="text-[10px] font-black uppercase text-red-400 mb-3 text-center">Reinicio de Sistema</p>
-                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Borrar Toda la Base de Datos</button>
-                    </div>
                 </div>`;
         };
 
@@ -307,29 +307,16 @@
                 let contenido = new TextDecoder('utf-8').decode(bytes);
                 if (contenido.includes('')) contenido = new TextDecoder('windows-1252').decode(bytes);
                 const lines = contenido.split('\n');
-                alert("Procesando productos...");
                 for(let i=1; i<lines.length; i++) {
                     const d = lines[i].split(',');
                     if(d.length >= 3) {
                         const n = d[0].trim();
-                        await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseInt(d[3])||0, cat: (d[4]||"General").trim() });
+                        await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseFloat(d[3])||0, cat: (d[4]||"General").trim() });
                     }
                 }
                 alert("Sincronizado"); await sync(); renderInventario();
             };
             reader.readAsArrayBuffer(input.files[0]);
-        };
-
-        window.borrarTodo = async () => {
-            if(!confirm("¿Borrar todo permanentemente?")) return;
-            const colecciones = ['productos', 'transacciones', 'deudas'];
-            for(const col of colecciones) {
-                const snap = await getDocs(collection(db_cloud, col));
-                const batch = writeBatch(db_cloud);
-                snap.forEach(d => batch.delete(d.ref));
-                await batch.commit();
-            }
-            alert("Sistema Limpio"); await sync(); window.renderDashboard();
         };
 
         window.exp = (t) => {
