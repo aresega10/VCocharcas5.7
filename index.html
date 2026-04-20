@@ -1,349 +1,349 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vcocharcas Cloud POS v6.2</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        @media print { body * { visibility: hidden; } #ticket-impresion, #ticket-impresion * { visibility: visible; } #ticket-impresion { position: absolute; left: 0; top: 0; width: 100%; display: block !important; } }
-        .ticket-font { font-family: 'Courier New', Courier, monospace; line-height: 1.2; }
-        .hide-scroll::-webkit-scrollbar { display: none; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vcocharcas Cloud POS v6.2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @media print { body * { visibility: hidden; } #ticket-impresion, #ticket-impresion * { visibility: visible; } #ticket-impresion { position: absolute; left: 0; top: 0; width: 100%; display: block !important; } }
+        .ticket-font { font-family: 'Courier New', Courier, monospace; line-height: 1.2; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+    </style>
 </head>
 <body class="bg-gray-100 pb-32">
 
-    <div id="ticket-impresion" class="hidden p-4 ticket-font text-xs bg-white w-[280px] mx-auto border border-black">
-        <div class="text-center mb-1"><div class="font-black text-xl uppercase italic">VCOCHARCAS</div><p class="text-[9px] uppercase tracking-widest text-gray-500">S.M.P. - LIMA</p></div>
-        <div class="my-1 border-b border-black border-dashed"></div>
-        <div id="t-tipo-pago" class="font-bold text-center border border-black p-1 my-1 uppercase"></div>
-        <div class="space-y-1 text-[10px]"><p>FECHA: <span id="t-fecha"></span></p><p>CLIENTE: <span id="t-cliente"></span></p></div>
-        <div class="my-2 border-b border-black border-dashed"></div>
-        <table class="w-full text-left text-[10px]"><thead><tr class="border-b border-black"><th>CANT</th><th>PROD.</th><th class="text-right">TOTAL</th></tr></thead><tbody id="t-items-print"></tbody></table>
-        <div class="my-2 border-b border-black border-dashed"></div>
-        <div class="flex justify-between font-bold text-base"><span>TOTAL S/</span><span id="t-total"></span></div>
-        <div class="text-center mt-6 uppercase text-[9px] font-black italic">Gracias por su compra</div>
-    </div>
+    <div id="ticket-impresion" class="hidden p-4 ticket-font text-xs bg-white w-[280px] mx-auto border border-black">
+        <div class="text-center mb-1"><div class="font-black text-xl uppercase italic">VCOCHARCAS</div><p class="text-[9px] uppercase tracking-widest text-gray-500">S.M.P. - LIMA</p></div>
+        <div class="my-1 border-b border-black border-dashed"></div>
+        <div id="t-tipo-pago" class="font-bold text-center border border-black p-1 my-1 uppercase"></div>
+        <div class="space-y-1 text-[10px]"><p>FECHA: <span id="t-fecha"></span></p><p>CLIENTE: <span id="t-cliente"></span></p></div>
+        <div class="my-2 border-b border-black border-dashed"></div>
+        <table class="w-full text-left text-[10px]"><thead><tr class="border-b border-black"><th>CANT</th><th>PROD.</th><th class="text-right">TOTAL</th></tr></thead><tbody id="t-items-print"></tbody></table>
+        <div class="my-2 border-b border-black border-dashed"></div>
+        <div class="flex justify-between font-bold text-base"><span>TOTAL S/</span><span id="t-total"></span></div>
+        <div class="text-center mt-6 uppercase text-[9px] font-black italic">Gracias por su compra</div>
+    </div>
 
-    <nav class="bg-blue-900 text-white p-4 sticky top-0 z-50 shadow-md">
-        <div class="flex justify-between items-center max-w-lg mx-auto">
-            <h1 class="text-xl font-bold italic uppercase tracking-tighter">Vcocharcas</h1>
-            <div class="text-right"><p id="nav-balance" class="font-black text-lg text-green-400 leading-none">S/ 0.00</p></div>
-        </div>
-    </nav>
+    <nav class="bg-blue-900 text-white p-4 sticky top-0 z-50 shadow-md">
+        <div class="flex justify-between items-center max-w-lg mx-auto">
+            <h1 class="text-xl font-bold italic uppercase tracking-tighter">Vcocharcas</h1>
+            <div class="text-right"><p id="nav-balance" class="font-black text-lg text-green-400 leading-none">S/ 0.00</p></div>
+        </div>
+    </nav>
 
-    <main class="max-w-lg mx-auto p-4 space-y-6" id="app-content"></main>
+    <main class="max-w-lg mx-auto p-4 space-y-6" id="app-content"></main>
 
-    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3 text-gray-400 shadow-2xl z-50">
-        <button onclick="renderDashboard()" class="flex flex-col items-center flex-1"><i class="fas fa-home"></i><span class="text-[10px]">Caja</span></button>
-        <button onclick="renderInventario()" class="flex flex-col items-center flex-1"><i class="fas fa-box"></i><span class="text-[10px]">Stock</span></button>
-        <button onclick="renderVenta()" class="flex flex-col items-center flex-1 text-blue-600"><div class="bg-blue-600 text-white p-4 rounded-full -mt-10 shadow-lg border-4 border-gray-100"><i class="fas fa-shopping-cart"></i></div><span class="text-[10px] font-bold uppercase">Venta</span></button>
-        <button onclick="renderDeudas()" class="flex flex-col items-center flex-1"><i class="fas fa-hand-holding-usd"></i><span class="text-[10px]">Fiados</span></button>
-        <button onclick="renderAdmin()" class="flex flex-col items-center flex-1"><i class="fas fa-cog"></i><span class="text-[10px]">Admin</span></button>
-    </footer>
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3 text-gray-400 shadow-2xl z-50">
+        <button onclick="renderDashboard()" class="flex flex-col items-center flex-1"><i class="fas fa-home"></i><span class="text-[10px]">Caja</span></button>
+        <button onclick="renderInventario()" class="flex flex-col items-center flex-1"><i class="fas fa-box"></i><span class="text-[10px]">Stock</span></button>
+        <button onclick="renderVenta()" class="flex flex-col items-center flex-1 text-blue-600"><div class="bg-blue-600 text-white p-4 rounded-full -mt-10 shadow-lg border-4 border-gray-100"><i class="fas fa-shopping-cart"></i></div><span class="text-[10px] font-bold uppercase">Venta</span></button>
+        <button onclick="renderDeudas()" class="flex flex-col items-center flex-1"><i class="fas fa-hand-holding-usd"></i><span class="text-[10px]">Fiados</span></button>
+        <button onclick="renderAdmin()" class="flex flex-col items-center flex-1"><i class="fas fa-cog"></i><span class="text-[10px]">Admin</span></button>
+    </footer>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, setDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAKfkbHtm16RP9of50FL3krx9Y_dFwWxeI",
-            authDomain: "vcocharcas-da8c3.firebaseapp.com",
-            projectId: "vcocharcas-da8c3",
-            storageBucket: "vcocharcas-da8c3.firebasestorage.app",
-            messagingSenderId: "786502732141",
-            appId: "1:786502732141:web:dae5f49657252dcb8a3264"
-        };
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKfkbHtm16RP9of50FL3krx9Y_dFwWxeI",
+            authDomain: "vcocharcas-da8c3.firebaseapp.com",
+            projectId: "vcocharcas-da8c3",
+            storageBucket: "vcocharcas-da8c3.firebasestorage.app",
+            messagingSenderId: "786502732141",
+            appId: "1:786502732141:web:dae5f49657252dcb8a3264"
+        };
 
-        const app = initializeApp(firebaseConfig);
-        const db_cloud = getFirestore(app);
+        const app = initializeApp(firebaseConfig);
+        const db_cloud = getFirestore(app);
 
-        let db = { transacciones: [], productos: [], deudas: [], categorias: ['General', 'Bebidas', 'Abarrotes', 'Limpieza', 'Golosinas'] };
-        let carrito = [];
-        let filtroCat = 'Todos';
-        let busquedaVenta = '';
-        let temporalCliente = { nombre: '', tel: '' }; 
+        let db = { transacciones: [], productos: [], deudas: [], categorias: ['General', 'Bebidas', 'Abarrotes', 'Limpieza', 'Golosinas'] };
+        let carrito = [];
+        let filtroCat = 'Todos';
+        let busquedaVenta = '';
+        let temporalCliente = { nombre: '', tel: '' }; 
 
-        const sync = async () => {
-            try {
-                const pSnap = await getDocs(collection(db_cloud, "productos"));
-                db.productos = pSnap.docs.map(d => d.data());
-                const tSnap = await getDocs(query(collection(db_cloud, "transacciones"), orderBy("timestamp", "desc")));
-                db.transacciones = tSnap.docs.map(d => d.data());
-                const dSnap = await getDocs(collection(db_cloud, "deudas"));
-                db.deudas = dSnap.docs.map(d => ({...d.data(), id: d.id}));
-                const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
-                document.getElementById('nav-balance').innerText = 'S/ ' + ingresos.toFixed(2);
-            } catch (e) { console.error(e); }
-        };
+        const sync = async () => {
+            try {
+                const pSnap = await getDocs(collection(db_cloud, "productos"));
+                db.productos = pSnap.docs.map(d => d.data());
+                const tSnap = await getDocs(query(collection(db_cloud, "transacciones"), orderBy("timestamp", "desc")));
+                db.transacciones = tSnap.docs.map(d => d.data());
+                const dSnap = await getDocs(collection(db_cloud, "deudas"));
+                db.deudas = dSnap.docs.map(d => ({...d.data(), id: d.id}));
+                const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
+                document.getElementById('nav-balance').innerText = 'S/ ' + ingresos.toFixed(2);
+            } catch (e) { console.error(e); }
+        };
 
-        window.renderDashboard = () => {
-            const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
-            const utilidad = db.transacciones.reduce((a, b) => a + (Number(b.utilidad) || 0), 0);
-            document.getElementById('app-content').innerHTML = `
-                <div class="space-y-4">
-                    <div class="bg-white p-10 rounded-3xl shadow-lg text-center border-b-8 border-green-500">
-                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Efectivo Total</p>
-                        <h1 class="text-5xl font-black text-blue-900 mt-2">S/ ${ingresos.toFixed(2)}</h1>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-blue-900 p-6 rounded-3xl text-center text-white"><p class="text-[8px] uppercase opacity-60 font-bold">Ganancia</p><h2 class="text-xl font-black text-green-400 italic">S/ ${utilidad.toFixed(2)}</h2></div>
-                        <div class="bg-white p-6 rounded-3xl text-center border shadow-xl"><p class="text-[8px] uppercase font-bold text-gray-400 tracking-widest">Fiados</p><h2 class="text-xl font-black text-red-600 italic">S/ ${db.deudas.reduce((a,b)=>a+b.monto,0).toFixed(2)}</h2></div>
-                    </div>
-                </div>`;
-        };
+        window.renderDashboard = () => {
+            const ingresos = db.transacciones.reduce((a, b) => a + (Number(b.monto) || 0), 0);
+            const utilidad = db.transacciones.reduce((a, b) => a + (Number(b.utilidad) || 0), 0);
+            document.getElementById('app-content').innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-white p-10 rounded-3xl shadow-lg text-center border-b-8 border-green-500">
+                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Efectivo Total</p>
+                        <h1 class="text-5xl font-black text-blue-900 mt-2">S/ ${ingresos.toFixed(2)}</h1>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-blue-900 p-6 rounded-3xl text-center text-white"><p class="text-[8px] uppercase opacity-60 font-bold">Ganancia</p><h2 class="text-xl font-black text-green-400 italic">S/ ${utilidad.toFixed(2)}</h2></div>
+                        <div class="bg-white p-6 rounded-3xl text-center border shadow-xl"><p class="text-[8px] uppercase font-bold text-gray-400 tracking-widest">Fiados</p><h2 class="text-xl font-black text-red-600 italic">S/ ${db.deudas.reduce((a,b)=>a+b.monto,0).toFixed(2)}</h2></div>
+                    </div>
+                </div>`;
+        };
 
-        window.renderInventario = () => {
-            document.getElementById('app-content').innerHTML = `
-                <div class="bg-white p-5 rounded-2xl shadow mb-4">
-                    <h3 id="inv-title" class="font-bold text-xs text-blue-900 uppercase mb-3 border-b pb-1">Gestión de Stock</h3>
-                    <input type="text" id="p-n" placeholder="Producto" class="w-full p-2 border mb-2 rounded-xl text-sm font-bold">
-                    <div class="grid grid-cols-2 gap-2 mb-2">
-                        <input type="number" id="p-c" placeholder="Costo S/" class="p-2 border rounded-xl text-xs">
-                        <input type="number" id="p-v" placeholder="Venta S/" class="p-2 border rounded-xl text-xs font-bold text-blue-600">
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="p-s" placeholder="Stock" class="p-2 border rounded-xl text-xs">
-                        <select id="p-cat" class="p-2 border rounded-xl text-xs bg-gray-50">${db.categorias.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
-                    </div>
-                    <div class="flex gap-2 mt-4">
-                        <button onclick="addP()" class="flex-1 bg-blue-900 text-white p-3 rounded-xl font-bold uppercase shadow text-xs">Guardar</button>
-                        <button onclick="limpiarFormInv()" class="bg-gray-100 text-gray-400 p-3 rounded-xl font-bold uppercase text-[10px]">Nuevo</button>
-                    </div>
-                </div>
-                <div class="space-y-2">
-                    ${db.productos.slice().sort((a,b) => a.nombre.localeCompare(b.nombre)).map(p => `
-                    <div class="bg-white p-3 rounded-xl flex justify-between items-center shadow-sm border-l-4 border-blue-900" onclick="editP('${p.nombre}')">
-                        <div class="flex-1"><b class="text-sm uppercase">${p.nombre}</b><br><small class="text-gray-400">Stock: ${p.stock} | ${p.cat}</small></div>
-                        <div class="text-right flex items-center gap-3"><b class="text-blue-900 italic">S/ ${p.precio.toFixed(2)}</b><button onclick="event.stopPropagation(); delP('${p.nombre}')" class="text-red-300 text-xs"><i class="fas fa-trash"></i></button></div>
-                    </div>`).join('')}
-                </div>`;
-        };
+        window.renderInventario = () => {
+            document.getElementById('app-content').innerHTML = `
+                <div class="bg-white p-5 rounded-2xl shadow mb-4">
+                    <h3 id="inv-title" class="font-bold text-xs text-blue-900 uppercase mb-3 border-b pb-1">Gestión de Stock</h3>
+                    <input type="text" id="p-n" placeholder="Producto" class="w-full p-2 border mb-2 rounded-xl text-sm font-bold">
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <input type="number" id="p-c" placeholder="Costo S/" class="p-2 border rounded-xl text-xs">
+                        <input type="number" id="p-v" placeholder="Venta S/" class="p-2 border rounded-xl text-xs font-bold text-blue-600">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="p-s" placeholder="Stock" class="p-2 border rounded-xl text-xs">
+                        <select id="p-cat" class="p-2 border rounded-xl text-xs bg-gray-50">${db.categorias.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                    </div>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="addP()" class="flex-1 bg-blue-900 text-white p-3 rounded-xl font-bold uppercase shadow text-xs">Guardar</button>
+                        <button onclick="limpiarFormInv()" class="bg-gray-100 text-gray-400 p-3 rounded-xl font-bold uppercase text-[10px]">Nuevo</button>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    ${db.productos.slice().sort((a,b) => a.nombre.localeCompare(b.nombre)).map(p => `
+                    <div class="bg-white p-3 rounded-xl flex justify-between items-center shadow-sm border-l-4 border-blue-900" onclick="editP('${p.nombre}')">
+                        <div class="flex-1"><b class="text-sm uppercase">${p.nombre}</b><br><small class="text-gray-400">Stock: ${p.stock} | ${p.cat}</small></div>
+                        <div class="text-right flex items-center gap-3"><b class="text-blue-900 italic">S/ ${p.precio.toFixed(2)}</b><button onclick="event.stopPropagation(); delP('${p.nombre}')" class="text-red-300 text-xs"><i class="fas fa-trash"></i></button></div>
+                    </div>`).join('')}
+                </div>`;
+        };
 
-        window.editP = (nombre) => {
-            const p = db.productos.find(x => x.nombre === nombre);
-            if(!p) return;
-            document.getElementById('p-n').value = p.nombre; document.getElementById('p-n').disabled = true;
-            document.getElementById('p-c').value = p.costo; document.getElementById('p-v').value = p.precio;
-            document.getElementById('p-s').value = p.stock; document.getElementById('p-cat').value = p.cat;
-            document.getElementById('inv-title').innerText = "Modificando: " + p.nombre;
-        };
+        window.editP = (nombre) => {
+            const p = db.productos.find(x => x.nombre === nombre);
+            if(!p) return;
+            document.getElementById('p-n').value = p.nombre; document.getElementById('p-n').disabled = true;
+            document.getElementById('p-c').value = p.costo; document.getElementById('p-v').value = p.precio;
+            document.getElementById('p-s').value = p.stock; document.getElementById('p-cat').value = p.cat;
+            document.getElementById('inv-title').innerText = "Modificando: " + p.nombre;
+        };
 
-        window.limpiarFormInv = () => {
-            document.getElementById('p-n').value = ""; document.getElementById('p-n').disabled = false;
-            document.getElementById('p-c').value = ""; document.getElementById('p-v').value = "";
-            document.getElementById('p-s').value = ""; document.getElementById('inv-title').innerText = "Nuevo Producto";
-        };
+        window.limpiarFormInv = () => {
+            document.getElementById('p-n').value = ""; document.getElementById('p-n').disabled = false;
+            document.getElementById('p-c').value = ""; document.getElementById('p-v').value = "";
+            document.getElementById('p-s').value = ""; document.getElementById('inv-title').innerText = "Nuevo Producto";
+        };
 
-        window.addP = async () => {
-            const n = document.getElementById('p-n').value.trim(), v = parseFloat(document.getElementById('p-v').value);
-            if (!n || isNaN(v)) return alert("Faltan datos (Nombre y Precio)");
+        window.addP = async () => {
+            const n = document.getElementById('p-n').value.trim(), v = parseFloat(document.getElementById('p-v').value);
+            if (!n || isNaN(v)) return alert("Faltan datos (Nombre y Precio)");
 
-            // Validación de Duplicados
-            const esEdicion = document.getElementById('p-n').disabled;
-            if (!esEdicion) {
-                const existe = db.productos.find(p => p.nombre.toLowerCase() === n.toLowerCase());
-                if (existe) return alert(`El producto "${n}" ya existe. Búscalo en la lista para editarlo.`);
-            }
+            // Validación de Duplicados
+            const esEdicion = document.getElementById('p-n').disabled;
+            if (!esEdicion) {
+                const existe = db.productos.find(p => p.nombre.toLowerCase() === n.toLowerCase());
+                if (existe) return alert(`El producto "${n}" ya existe. Búscalo en la lista para editarlo.`);
+            }
 
-            try {
-                await setDoc(doc(db_cloud, "productos", n), { 
-                    nombre: n, 
-                    precio: v, 
-                    costo: parseFloat(document.getElementById('p-c').value)||0, 
-                    stock: parseInt(document.getElementById('p-s').value)||0, 
-                    cat: document.getElementById('p-cat').value 
-                });
-                await sync(); window.renderInventario();
-            } catch (e) { alert("Error al guardar en la nube"); }
-        };
+            try {
+                await setDoc(doc(db_cloud, "productos", n), { 
+                    nombre: n, 
+                    precio: v, 
+                    costo: parseFloat(document.getElementById('p-c').value)||0, 
+                    stock: parseInt(document.getElementById('p-s').value)||0, 
+                    cat: document.getElementById('p-cat').value 
+                });
+                await sync(); window.renderInventario();
+            } catch (e) { alert("Error al guardar en la nube"); }
+        };
 
-        window.delP = async (n) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
+        window.delP = async (n) => { if(confirm("¿Eliminar?")) { await deleteDoc(doc(db_cloud, "productos", n)); await sync(); window.renderInventario(); }};
 
-        window.renderVenta = () => {
-            document.getElementById('app-content').innerHTML = `
-                <div class="bg-white p-4 rounded-2xl shadow mb-4">
-                    <div class="grid grid-cols-2 gap-2 mb-3">
-                        <input type="text" id="v-cli" oninput="saveTempCli()" placeholder="Cliente" value="${temporalCliente.nombre}" class="p-2 border rounded-xl text-sm font-bold">
-                        <input type="number" id="v-tel" oninput="saveTempCli()" placeholder="WhatsApp" value="${temporalCliente.tel}" class="p-2 border rounded-xl text-sm">
-                    </div>
-                    <div class="flex gap-2 mb-3 bg-blue-50 p-2 rounded-xl border border-blue-100">
-                        <input type="text" id="gen-nom" placeholder="Varios" class="flex-1 p-2 border rounded-lg text-xs" value="Varios">
-                        <input type="number" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold">
-                        <button onclick="addGeneric()" class="bg-blue-900 text-white px-3 rounded-lg text-xs font-bold"><i class="fas fa-plus"></i></button>
-                    </div>
-                    <input type="text" id="bus-prod" onkeyup="busV(this.value)" placeholder="🔍 Buscar producto..." class="w-full p-3 border rounded-xl mb-3 bg-gray-50 text-sm">
-                    <div class="flex gap-2 mb-3 overflow-x-auto hide-scroll pb-1">
-                        <button onclick="fCat('Todos')" class="px-3 py-1 rounded-full text-[10px] font-bold ${filtroCat==='Todos'?'bg-blue-900 text-white':'bg-gray-100'}">Todos</button>
-                        ${db.categorias.map(c => `<button onclick="fCat('${c}')" class="px-3 py-1 rounded-full text-[10px] font-bold ${filtroCat===c?'bg-blue-900 text-white':'bg-gray-100'}">${c}</button>`).join('')}
-                    </div>
-                    <div id="lista-productos-venta" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
-                        ${renderListaProds()}
-                    </div>
-                </div>
-                <div id="cart-area" class="bg-blue-900 text-white p-5 rounded-3xl shadow-2xl"></div>`;
-            rCart();
-            document.getElementById('bus-prod').value = busquedaVenta;
-            document.getElementById('bus-prod').focus();
-        };
+        window.renderVenta = () => {
+            document.getElementById('app-content').innerHTML = `
+                <div class="bg-white p-4 rounded-2xl shadow mb-4">
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <input type="text" id="v-cli" oninput="saveTempCli()" placeholder="Cliente" value="${temporalCliente.nombre}" class="p-2 border rounded-xl text-sm font-bold">
+                        <input type="number" id="v-tel" oninput="saveTempCli()" placeholder="WhatsApp" value="${temporalCliente.tel}" class="p-2 border rounded-xl text-sm">
+                    </div>
+                    <div class="flex gap-2 mb-3 bg-blue-50 p-2 rounded-xl border border-blue-100">
+                        <input type="text" id="gen-nom" placeholder="Varios" class="flex-1 p-2 border rounded-lg text-xs" value="Varios">
+                        <input type="number" id="gen-pre" placeholder="S/" class="w-16 p-2 border rounded-lg text-xs font-bold">
+                        <button onclick="addGeneric()" class="bg-blue-900 text-white px-3 rounded-lg text-xs font-bold"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <input type="text" id="bus-prod" onkeyup="busV(this.value)" placeholder="🔍 Buscar producto..." class="w-full p-3 border rounded-xl mb-3 bg-gray-50 text-sm">
+                    <div class="flex gap-2 mb-3 overflow-x-auto hide-scroll pb-1">
+                        <button onclick="fCat('Todos')" class="px-3 py-1 rounded-full text-[10px] font-bold ${filtroCat==='Todos'?'bg-blue-900 text-white':'bg-gray-100'}">Todos</button>
+                        ${db.categorias.map(c => `<button onclick="fCat('${c}')" class="px-3 py-1 rounded-full text-[10px] font-bold ${filtroCat===c?'bg-blue-900 text-white':'bg-gray-100'}">${c}</button>`).join('')}
+                    </div>
+                    <div id="lista-productos-venta" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
+                        ${renderListaProds()}
+                    </div>
+                </div>
+                <div id="cart-area" class="bg-blue-900 text-white p-5 rounded-3xl shadow-2xl"></div>`;
+            rCart();
+            document.getElementById('bus-prod').value = busquedaVenta;
+            document.getElementById('bus-prod').focus();
+        };
 
-        window.busV = (v) => { 
-            busquedaVenta = v; 
-            document.getElementById('lista-productos-venta').innerHTML = renderListaProds();
-        };
+        window.busV = (v) => { 
+            busquedaVenta = v; 
+            document.getElementById('lista-productos-venta').innerHTML = renderListaProds();
+        };
 
-        const renderListaProds = () => {
-            return db.productos
-                .filter(p => (filtroCat==='Todos'||p.cat===filtroCat) && p.nombre.toLowerCase().includes(busquedaVenta.toLowerCase()))
-                .sort((a,b) => a.nombre.localeCompare(b.nombre))
-                .map(p => `
-                <button onclick="addCart('${p.nombre}')" class="p-2 bg-white border rounded-xl text-left shadow-sm active:bg-blue-100">
-                    <b class="text-[9px] uppercase block truncate text-gray-500">${p.nombre}</b>
-                    <div class="flex justify-between items-center"><span class="text-blue-900 font-black italic text-xs">S/ ${p.precio.toFixed(2)}</span><span class="text-[8px] opacity-40">St: ${p.stock}</span></div>
-                </button>`).join('');
-        };
+        const renderListaProds = () => {
+            return db.productos
+                .filter(p => (filtroCat==='Todos'||p.cat===filtroCat) && p.nombre.toLowerCase().includes(busquedaVenta.toLowerCase()))
+                .sort((a,b) => a.nombre.localeCompare(b.nombre))
+                .map(p => `
+                <button onclick="addCart('${p.nombre}')" class="p-2 bg-white border rounded-xl text-left shadow-sm active:bg-blue-100">
+                    <b class="text-[9px] uppercase block truncate text-gray-500">${p.nombre}</b>
+                    <div class="flex justify-between items-center"><span class="text-blue-900 font-black italic text-xs">S/ ${p.precio.toFixed(2)}</span><span class="text-[8px] opacity-40">St: ${p.stock}</span></div>
+                </button>`).join('');
+        };
 
-        window.saveTempCli = () => {
-            temporalCliente.nombre = document.getElementById('v-cli').value;
-            temporalCliente.tel = document.getElementById('v-tel').value;
-        };
+        window.saveTempCli = () => {
+            temporalCliente.nombre = document.getElementById('v-cli').value;
+            temporalCliente.tel = document.getElementById('v-tel').value;
+        };
 
-        window.addGeneric = () => {
-            const n = document.getElementById('gen-nom').value || "Varios", p = parseFloat(document.getElementById('gen-pre').value);
-            if(isNaN(p) || p <= 0) return alert("Ingresa precio");
-            carrito.push({ d: n, p: p, c: 1, ut: 0 }); document.getElementById('gen-pre').value = ""; rCart();
-        };
+        window.addGeneric = () => {
+            const n = document.getElementById('gen-nom').value || "Varios", p = parseFloat(document.getElementById('gen-pre').value);
+            if(isNaN(p) || p <= 0) return alert("Ingresa precio");
+            carrito.push({ d: n, p: p, c: 1, ut: 0 }); document.getElementById('gen-pre').value = ""; rCart();
+        };
 
-        window.fCat = (c) => { filtroCat = c; window.renderVenta(); };
+        window.fCat = (c) => { filtroCat = c; window.renderVenta(); };
 
-        window.addCart = (n) => {
-            const p = db.productos.find(x => x.nombre === n);
-            const e = carrito.find(x => x.d === n);
-            if(e) e.c++; else carrito.push({ d: p.nombre, p: p.precio, c: 1, ut: (p.precio - (p.costo||0)) });
-            rCart();
-        };
+        window.addCart = (n) => {
+            const p = db.productos.find(x => x.nombre === n);
+            const e = carrito.find(x => x.d === n);
+            if(e) e.c++; else carrito.push({ d: p.nombre, p: p.precio, c: 1, ut: (p.precio - (p.costo||0)) });
+            rCart();
+        };
 
-        const rCart = () => {
-            const tot = carrito.reduce((a, b) => a + (b.p * b.c), 0);
-            const div = document.getElementById('cart-area'); if(!div) return;
-            if(carrito.length===0) { div.innerHTML = `<p class="text-center opacity-30 italic text-xs">Vacío...</p>`; return; }
-            div.innerHTML = `
-                <div class="space-y-1 mb-3 max-h-32 overflow-y-auto text-[10px]">
-                    ${carrito.map((i, x) => `<div class="flex justify-between border-b border-blue-800 pb-1"><span>${i.c}x ${i.d}</span><div class="flex items-center gap-2"><span>S/ ${(i.p*i.c).toFixed(2)}</span><button onclick="delC(${x})"><i class="fas fa-times text-red-400"></i></button></div></div>`).join('')}
-                </div>
-                <div class="flex justify-between font-black text-xl border-t border-blue-700 pt-2"><span>TOTAL</span><span>S/ ${tot.toFixed(2)}</span></div>
-                <div class="grid grid-cols-2 gap-2 mt-4">
-                    <button onclick="finV('Contado')" class="bg-green-500 py-3 rounded-xl font-bold uppercase text-[10px]">Efectivo</button>
-                    <button onclick="finV('Fíado')" class="bg-yellow-500 py-3 rounded-xl font-bold uppercase text-[10px]">Fíado</button>
-                </div>`;
-        };
+        const rCart = () => {
+            const tot = carrito.reduce((a, b) => a + (b.p * b.c), 0);
+            const div = document.getElementById('cart-area'); if(!div) return;
+            if(carrito.length===0) { div.innerHTML = `<p class="text-center opacity-30 italic text-xs">Vacío...</p>`; return; }
+            div.innerHTML = `
+                <div class="space-y-1 mb-3 max-h-32 overflow-y-auto text-[10px]">
+                    ${carrito.map((i, x) => `<div class="flex justify-between border-b border-blue-800 pb-1"><span>${i.c}x ${i.d}</span><div class="flex items-center gap-2"><span>S/ ${(i.p*i.c).toFixed(2)}</span><button onclick="delC(${x})"><i class="fas fa-times text-red-400"></i></button></div></div>`).join('')}
+                </div>
+                <div class="flex justify-between font-black text-xl border-t border-blue-700 pt-2"><span>TOTAL</span><span>S/ ${tot.toFixed(2)}</span></div>
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                    <button onclick="finV('Contado')" class="bg-green-500 py-3 rounded-xl font-bold uppercase text-[10px]">Efectivo</button>
+                    <button onclick="finV('Fíado')" class="bg-yellow-500 py-3 rounded-xl font-bold uppercase text-[10px]">Fíado</button>
+                </div>`;
+        };
 
-        window.delC = (i) => { carrito.splice(i, 1); rCart(); };
+        window.delC = (i) => { carrito.splice(i, 1); rCart(); };
 
-        window.finV = async (m) => {
-            if(carrito.length===0) return;
-            const tot = carrito.reduce((a,b)=>a+(b.p*b.c), 0), uti = carrito.reduce((a,b)=>a+(b.ut*b.c), 0);
-            const cli = temporalCliente.nombre || "Venta General", tel = temporalCliente.tel;
-            await addDoc(collection(db_cloud, "transacciones"), { monto: tot, utilidad: uti, metodo: m, cli: cli, timestamp: serverTimestamp(), fecha: new Date().toLocaleString() });
-            if(m === 'Fíado') {
-                await addDoc(collection(db_cloud, "deudas"), { cli: cli, tel: tel, monto: tot, fecha: new Date().toLocaleDateString(), detalle: carrito.map(x=>`${x.c}x ${x.d}`).join(', '), items: carrito });
-            }
-            for(const i of carrito) { 
-                const p = db.productos.find(x => x.nombre === i.d); 
-                if(p) { p.stock -= i.c; await setDoc(doc(db_cloud, "productos", p.nombre), p); } 
-            }
-            imprimirTicket(cli, m, tot, carrito);
-            if(tel && confirm("¿WhatsApp?")) window.open(`https://wa.me/51${tel}?text=Hola ${cli}, compra S/ ${tot.toFixed(2)} lista.`);
-            carrito = []; temporalCliente = { nombre: '', tel: '' }; await sync(); window.renderDashboard();
-        };
+        window.finV = async (m) => {
+            if(carrito.length===0) return;
+            const tot = carrito.reduce((a,b)=>a+(b.p*b.c), 0), uti = carrito.reduce((a,b)=>a+(b.ut*b.c), 0);
+            const cli = temporalCliente.nombre || "Venta General", tel = temporalCliente.tel;
+            await addDoc(collection(db_cloud, "transacciones"), { monto: tot, utilidad: uti, metodo: m, cli: cli, timestamp: serverTimestamp(), fecha: new Date().toLocaleString() });
+            if(m === 'Fíado') {
+                await addDoc(collection(db_cloud, "deudas"), { cli: cli, tel: tel, monto: tot, fecha: new Date().toLocaleDateString(), detalle: carrito.map(x=>`${x.c}x ${x.d}`).join(', '), items: carrito });
+            }
+            for(const i of carrito) { 
+                const p = db.productos.find(x => x.nombre === i.d); 
+                if(p) { p.stock -= i.c; await setDoc(doc(db_cloud, "productos", p.nombre), p); } 
+            }
+            imprimirTicket(cli, m, tot, carrito);
+            if(tel && confirm("¿WhatsApp?")) window.open(`https://wa.me/51${tel}?text=Hola ${cli}, compra S/ ${tot.toFixed(2)} lista.`);
+            carrito = []; temporalCliente = { nombre: '', tel: '' }; await sync(); window.renderDashboard();
+        };
 
-        const imprimirTicket = (cli, m, tot, items) => {
-            if(!confirm("¿Ticket?")) return;
-            document.getElementById('t-fecha').innerText = new Date().toLocaleString();
-            document.getElementById('t-cliente').innerText = cli;
-            document.getElementById('t-tipo-pago').innerText = m;
-            document.getElementById('t-total').innerText = tot.toFixed(2);
-            document.getElementById('t-items-print').innerHTML = items.map(i => `<tr><td>${i.c}</td><td>${i.d}</td><td class="text-right">${(i.p*i.c).toFixed(2)}</td></tr>`).join('');
-            window.print();
-        };
+        const imprimirTicket = (cli, m, tot, items) => {
+            if(!confirm("¿Ticket?")) return;
+            document.getElementById('t-fecha').innerText = new Date().toLocaleString();
+            document.getElementById('t-cliente').innerText = cli;
+            document.getElementById('t-tipo-pago').innerText = m;
+            document.getElementById('t-total').innerText = tot.toFixed(2);
+            document.getElementById('t-items-print').innerHTML = items.map(i => `<tr><td>${i.c}</td><td>${i.d}</td><td class="text-right">${(i.p*i.c).toFixed(2)}</td></tr>`).join('');
+            window.print();
+        };
 
-        window.renderDeudas = () => {
-            document.getElementById('app-content').innerHTML = `<h2 class="font-black text-blue-900 uppercase mb-4">Cuentas por Cobrar</h2>
-                <div class="space-y-3">
-                    ${db.deudas.map(d => `<div class="bg-white p-4 rounded-2xl shadow flex justify-between border-l-8 border-yellow-500">
-                        <div class="flex-1"><b class="uppercase text-sm">${d.cli}</b><p class="text-[9px] text-gray-400 mt-1">${d.detalle}</p></div>
-                        <div class="text-right"><b class="text-lg text-red-600 block">S/ ${d.monto.toFixed(2)}</b><button onclick="cobrar('${d.id}')" class="text-white bg-green-600 text-[9px] font-bold px-3 py-1 rounded-lg mt-2 uppercase shadow-sm">Cobrado</button></div>
-                    </div>`).join('')}
-                </div>`;
-        };
+        window.renderDeudas = () => {
+            document.getElementById('app-content').innerHTML = `<h2 class="font-black text-blue-900 uppercase mb-4">Cuentas por Cobrar</h2>
+                <div class="space-y-3">
+                    ${db.deudas.map(d => `<div class="bg-white p-4 rounded-2xl shadow flex justify-between border-l-8 border-yellow-500">
+                        <div class="flex-1"><b class="uppercase text-sm">${d.cli}</b><p class="text-[9px] text-gray-400 mt-1">${d.detalle}</p></div>
+                        <div class="text-right"><b class="text-lg text-red-600 block">S/ ${d.monto.toFixed(2)}</b><button onclick="cobrar('${d.id}')" class="text-white bg-green-600 text-[9px] font-bold px-3 py-1 rounded-lg mt-2 uppercase shadow-sm">Cobrado</button></div>
+                    </div>`).join('')}
+                </div>`;
+        };
 
-        window.cobrar = async (id) => { if(confirm("¿Pago confirmado?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
+        window.cobrar = async (id) => { if(confirm("¿Pago confirmado?")) { await deleteDoc(doc(db_cloud, "deudas", id)); await sync(); window.renderDeudas(); }};
 
-        window.renderAdmin = () => {
-            document.getElementById('app-content').innerHTML = `
-                <div class="space-y-4">
-                    <div class="bg-white p-6 rounded-3xl shadow">
-                        <button onclick="exp('v')" class="w-full bg-blue-900 text-white p-4 rounded-2xl font-bold uppercase text-xs mb-2">Descargar Ventas (CSV)</button>
-                        <button onclick="exp('s')" class="w-full bg-gray-100 text-blue-900 p-4 rounded-2xl font-bold uppercase text-xs border">Descargar Stock (CSV)</button>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl shadow">
-                        <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Importar Inventario</p>
-                        <input type="file" id="fCsv" class="text-xs mb-3 block w-full">
-                        <button onclick="subirCSV()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Subir a la Nube</button>
-                    </div>
-                    <div class="bg-red-50 p-6 rounded-3xl border border-red-100 shadow">
-                        <p class="text-[10px] font-black uppercase text-red-400 mb-3 text-center">Reinicio de Sistema</p>
-                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Borrar Toda la Base de Datos</button>
-                    </div>
-                </div>`;
-        };
+        window.renderAdmin = () => {
+            document.getElementById('app-content').innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-white p-6 rounded-3xl shadow">
+                        <button onclick="exp('v')" class="w-full bg-blue-900 text-white p-4 rounded-2xl font-bold uppercase text-xs mb-2">Descargar Ventas (CSV)</button>
+                        <button onclick="exp('s')" class="w-full bg-gray-100 text-blue-900 p-4 rounded-2xl font-bold uppercase text-xs border">Descargar Stock (CSV)</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl shadow">
+                        <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Importar Inventario</p>
+                        <input type="file" id="fCsv" class="text-xs mb-3 block w-full">
+                        <button onclick="subirCSV()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Subir a la Nube</button>
+                    </div>
+                    <div class="bg-red-50 p-6 rounded-3xl border border-red-100 shadow">
+                        <p class="text-[10px] font-black uppercase text-red-400 mb-3 text-center">Reinicio de Sistema</p>
+                        <button onclick="borrarTodo()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold uppercase text-xs">Borrar Toda la Base de Datos</button>
+                    </div>
+                </div>`;
+        };
 
-        window.subirCSV = () => {
-            const input = document.getElementById('fCsv'); if(!input.files[0]) return alert("Selecciona archivo");
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const bytes = new Uint8Array(e.target.result);
-                let contenido = new TextDecoder('utf-8').decode(bytes);
-                if (contenido.includes('')) contenido = new TextDecoder('windows-1252').decode(bytes);
-                const lines = contenido.split('\n');
-                alert("Procesando productos...");
-                for(let i=1; i<lines.length; i++) {
-                    const d = lines[i].split(',');
-                    if(d.length >= 3) {
-                        const n = d[0].trim();
-                        await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseInt(d[3])||0, cat: (d[4]||"General").trim() });
-                    }
-                }
-                alert("Sincronizado"); await sync(); renderInventario();
-            };
-            reader.readAsArrayBuffer(input.files[0]);
-        };
+        window.subirCSV = () => {
+            const input = document.getElementById('fCsv'); if(!input.files[0]) return alert("Selecciona archivo");
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const bytes = new Uint8Array(e.target.result);
+                let contenido = new TextDecoder('utf-8').decode(bytes);
+                if (contenido.includes('')) contenido = new TextDecoder('windows-1252').decode(bytes);
+                const lines = contenido.split('\n');
+                alert("Procesando productos...");
+                for(let i=1; i<lines.length; i++) {
+                    const d = lines[i].split(',');
+                    if(d.length >= 3) {
+                        const n = d[0].trim();
+                        await setDoc(doc(db_cloud, "productos", n), { nombre: n, costo: parseFloat(d[1])||0, precio: parseFloat(d[2])||0, stock: parseInt(d[3])||0, cat: (d[4]||"General").trim() });
+                    }
+                }
+                alert("Sincronizado"); await sync(); renderInventario();
+            };
+            reader.readAsArrayBuffer(input.files[0]);
+        };
 
-        window.borrarTodo = async () => {
-            if(!confirm("¿Borrar todo permanentemente?")) return;
-            const colecciones = ['productos', 'transacciones', 'deudas'];
-            for(const col of colecciones) {
-                const snap = await getDocs(collection(db_cloud, col));
-                const batch = writeBatch(db_cloud);
-                snap.forEach(d => batch.delete(d.ref));
-                await batch.commit();
-            }
-            alert("Sistema Limpio"); await sync(); window.renderDashboard();
-        };
+        window.borrarTodo = async () => {
+            if(!confirm("¿Borrar todo permanentemente?")) return;
+            const colecciones = ['productos', 'transacciones', 'deudas'];
+            for(const col of colecciones) {
+                const snap = await getDocs(collection(db_cloud, col));
+                const batch = writeBatch(db_cloud);
+                snap.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+            alert("Sistema Limpio"); await sync(); window.renderDashboard();
+        };
 
-        window.exp = (t) => {
-            let contenido = (t === 'v') ? "Fecha,Cliente,Monto,Utilidad\n" : "Nombre,Costo,Precio,Stock,Categoria\n";
-            if (t === 'v') db.transacciones.forEach(x => contenido += `${x.fecha},${x.cli},${x.monto},${x.utilidad}\n`);
-            else db.productos.forEach(x => contenido += `${x.nombre},${x.costo},${x.precio},${x.stock},${x.cat}\n`);
-            const blob = new Blob(["\ufeff" + contenido], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = (t === 'v' ? "ventas_vcocharcas.csv" : "stock_vcocharcas.csv");
-            link.click();
-        };
+        window.exp = (t) => {
+            let contenido = (t === 'v') ? "Fecha,Cliente,Monto,Utilidad\n" : "Nombre,Costo,Precio,Stock,Categoria\n";
+            if (t === 'v') db.transacciones.forEach(x => contenido += `${x.fecha},${x.cli},${x.monto},${x.utilidad}\n`);
+            else db.productos.forEach(x => contenido += `${x.nombre},${x.costo},${x.precio},${x.stock},${x.cat}\n`);
+            const blob = new Blob(["\ufeff" + contenido], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = (t === 'v' ? "ventas_vcocharcas.csv" : "stock_vcocharcas.csv");
+            link.click();
+        };
 
-        await sync(); window.renderDashboard();
-    </script>
+        await sync(); window.renderDashboard();
+    </script>
 </body>
 </html>
